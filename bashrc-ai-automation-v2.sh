@@ -484,7 +484,7 @@ check-agent() {
     [ -f "/tmp/auto_commit_${session}.pid" ] && echo -e "\n=== 自动提交: 运行中 ==="
     
     # 下次检查备注
-    local note=$(read-next-note "$session:0" 2>/dev/null)
+    local note=$(read-next-note "$session:Claude" 2>/dev/null)
     [ -n "$note" ] && [ "$note" != "无备注" ] && echo -e "\n=== 下次检查备注 ===\n$note"
 }
 
@@ -578,7 +578,7 @@ monitor-snapshot() {
         fi
 
         # 下次检查备注
-        local note_file="/tmp/next_check_note_${session}_0.txt"
+        local note_file="/tmp/next_check_note_${session}_Claude.txt"
         if [ -f "$note_file" ]; then
             echo "    - 下次检查: $(cat "$note_file")"
         fi
