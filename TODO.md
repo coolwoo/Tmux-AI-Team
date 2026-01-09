@@ -63,6 +63,20 @@ Cargo.toml → rust
 - B. 添加更多配置文件检测（如 setup.py、Makefile、*.sh 等）
 - C. 两者结合：优先配置文件，备选源文件
 
+**待添加的项目类型**：
+
+| 类型 | 检测方式 |
+|------|----------|
+| Spring Boot | pom.xml 含 `spring-boot` 或 build.gradle 含 `spring-boot` |
+| .NET/C# | *.csproj 或 *.sln |
+| PHP | composer.json |
+| Flutter/Dart | pubspec.yaml |
+| Kotlin | build.gradle.kts |
+| Swift | Package.swift |
+| Elixir | mix.exs |
+| Scala | build.sbt |
+| Bash/Shell | *.sh 文件为主（无配置文件时备选） |
+
 **优先级**：低（功能性改进，不影响核心流程）
 
 **状态**：待决定
