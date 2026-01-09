@@ -11,6 +11,7 @@ AI 项目自动化工具包 - 将 tmux 与 Claude Code 集成，实现自主多 
 - 自调度：Agent 使用 `at` 命令安排下次检查时间
 - 多 Agent 通信：通过 tmux 消息传递实现跨会话通信
 - PM 监督模式：AI 项目经理自动监督 Engineer Agent
+- 环境自检：自动检测依赖并提供安装建议
 
 ## 开发与测试
 
@@ -95,6 +96,22 @@ fire my-project
 # → 在 Claude 窗口启动 claude 命令
 # → 发送初始任务简报
 ```
+
+### 环境自检 (check-deps)
+
+检查所有依赖并提供安装建议：
+
+```bash
+check-deps
+# → 检查 tmux, claude, git, at 等依赖
+# → 显示版本信息和状态
+# → 缺失时提供对应系统的安装命令
+```
+
+检查分级：
+- **L0 致命级**：tmux, claude, CODING_BASE → 阻止关键函数执行
+- **L1 重要级**：at, atd, git → 警告但允许继续
+- **L2 信息级**：watch, 日志目录 → 仅提示
 
 ## 配置
 

@@ -58,6 +58,9 @@
 cp bashrc-ai-automation-v2.sh ~/.ai-automation.sh
 grep -q 'ai-automation.sh' ~/.bashrc || echo '[ -f ~/.ai-automation.sh ] && source ~/.ai-automation.sh' >> ~/.bashrc
 source ~/.bashrc
+
+# 检查环境依赖
+check-deps
 ```
 
 ### 2. 启动多个项目

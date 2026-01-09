@@ -477,10 +477,13 @@ tmux list-windows -t my-project
 ### 问题: 自调度不工作
 
 ```bash
-# 检查 at 命令
+# 使用 check-deps 检查环境
+check-deps
+
+# 或手动检查 at 命令
 which at
 
-# 安装 at
+# 安装 at (Ubuntu/Debian)
 sudo apt install at
 sudo systemctl enable --now atd
 ```

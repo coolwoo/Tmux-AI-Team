@@ -19,6 +19,224 @@ export CLAUDE_CMD="${CLAUDE_CMD:-claude}"
 export DEFAULT_DELAY="${DEFAULT_DELAY:-1}"
 
 #===============================================================================
+# 环境自检
+#===============================================================================
+
+# 检测包管理器
+_ai_get_pkg_manager() {
+    if command -v apt &>/dev/null; then
+        echo "apt"
+    elif command -v brew &>/dev/null; then
+        echo "brew"
+    elif command -v yum &>/dev/null; then
+        echo "yum"
+    elif command -v pacman &>/dev/null; then
+        echo "pacman"
+    else
+        echo "unknown"
+    fi
+}
+
+# 获取安装建议
+_ai_install_hint() {
+    local cmd="$1"
+    local pkg_mgr=$(_ai_get_pkg_manager)
+
+    case "$cmd" in
+        tmux)
+            case "$pkg_mgr" in
+                apt) echo "sudo apt install tmux" ;;
+                brew) echo "brew install tmux" ;;
+                yum) echo "sudo yum install tmux" ;;
+                pacman) echo "sudo pacman -S tmux" ;;
+                *) echo "请安装 tmux" ;;
+            esac
+            ;;
+        claude)
+            echo "npm install -g @anthropic-ai/claude-code"
+            ;;
+        at)
+            case "$pkg_mgr" in
+                apt) echo "sudo apt install at" ;;
+                brew) echo "brew install at" ;;
+                yum) echo "sudo yum install at" ;;
+                pacman) echo "sudo pacman -S at" ;;
+                *) echo "请安装 at" ;;
+            esac
+            ;;
+        git)
+            case "$pkg_mgr" in
+                apt) echo "sudo apt install git" ;;
+                brew) echo "brew install git" ;;
+                yum) echo "sudo yum install git" ;;
+                pacman) echo "sudo pacman -S git" ;;
+                *) echo "请安装 git" ;;
+            esac
+            ;;
+        watch)
+            case "$pkg_mgr" in
+                apt) echo "sudo apt install procps" ;;
+                brew) echo "brew install watch" ;;
+                yum) echo "sudo yum install procps-ng" ;;
+                pacman) echo "sudo pacman -S procps-ng" ;;
+                *) echo "请安装 watch" ;;
+            esac
+            ;;
+        atd)
+            echo "sudo systemctl start atd && sudo systemctl enable atd"
+            ;;
+    esac
+}
+
+# 详细依赖检查 (用户手动调用)
+# 返回值: 0=全部通过, 1=有致命问题, 2=有警告
+check-deps() {
+    local fatal=0
+    local warn=0
+
+    echo "┌─────────────────────────────────────────────────────────┐"
+    echo "│  AI 自动化工具包 - 环境检查                             │"
+    echo "├─────────────────────────────────────────────────────────┤"
+
+    # L0 - 致命级检查
+    # tmux
+    if command -v tmux &>/dev/null; then
+        local tmux_ver=$(tmux -V 2>/dev/null | head -1)
+        echo "│ ✓ $tmux_ver"
+    else
+        echo "│ ✗ tmux 未安装 [必需]"
+        echo "│   → $(_ai_install_hint tmux)"
+        fatal=1
+    fi
+
+    # claude
+    if command -v "$CLAUDE_CMD" &>/dev/null; then
+        echo "│ ✓ claude ($CLAUDE_CMD)"
+    else
+        echo "│ ✗ claude 命令未找到 [必需]"
+        echo "│   → $(_ai_install_hint claude)"
+        fatal=1
+    fi
+
+    # CODING_BASE
+    if [ -d "$CODING_BASE" ]; then
+        echo "│ ✓ CODING_BASE: $CODING_BASE"
+    else
+        echo "│ ✗ CODING_BASE 目录不存在: $CODING_BASE [必需]"
+        echo "│   → mkdir -p \"$CODING_BASE\""
+        fatal=1
+    fi
+
+    echo "├─────────────────────────────────────────────────────────┤"
+
+    # L1 - 重要级检查
+    # at
+    if command -v at &>/dev/null; then
+        echo "│ ✓ at (自调度命令)"
+    else
+        echo "│ ⚠ at 未安装 (自调度将使用后台 sleep)"
+        echo "│   → $(_ai_install_hint at)"
+        warn=1
+    fi
+
+    # atd 服务 (仅在有 systemctl 时检查)
+    if command -v at &>/dev/null && command -v systemctl &>/dev/null; then
+        if systemctl is-active atd &>/dev/null; then
+            echo "│ ✓ atd 服务运行中"
+        else
+            echo "│ ⚠ atd 服务未运行"
+            echo "│   → $(_ai_install_hint atd)"
+            warn=1
+        fi
+    fi
+
+    # git
+    if command -v git &>/dev/null; then
+        local git_ver=$(git --version 2>/dev/null | head -1)
+        echo "│ ✓ $git_ver"
+    else
+        echo "│ ⚠ git 未安装 (自动提交将不可用)"
+        echo "│   → $(_ai_install_hint git)"
+        warn=1
+    fi
+
+    echo "├─────────────────────────────────────────────────────────┤"
+
+    # L2 - 信息级检查
+    # watch
+    if command -v watch &>/dev/null; then
+        echo "│ ○ watch (可选 - 实时监控)"
+    else
+        echo "│ ○ watch 未安装 (monitor-agent 将不可用)"
+        echo "│   → $(_ai_install_hint watch)"
+    fi
+
+    # 日志目录
+    if [ -w "${AGENT_LOG_DIR:-$HOME/.agent-logs}" ] 2>/dev/null || mkdir -p "${AGENT_LOG_DIR:-$HOME/.agent-logs}" 2>/dev/null; then
+        echo "│ ○ 日志目录: ${AGENT_LOG_DIR:-$HOME/.agent-logs}"
+    else
+        echo "│ ○ 日志目录不可写: ${AGENT_LOG_DIR:-$HOME/.agent-logs}"
+    fi
+
+    echo "└─────────────────────────────────────────────────────────┘"
+
+    # 状态汇总
+    if [ $fatal -eq 1 ]; then
+        echo "状态: ✗ 不可用 (缺少必需依赖)"
+        return 1
+    elif [ $warn -gt 0 ]; then
+        echo "状态: ⚠ 可用 (有 $warn 个警告)"
+        return 2
+    else
+        echo "状态: ✓ 就绪"
+        return 0
+    fi
+}
+
+# 快速检查 (仅 L0 致命级，用于 source 时)
+_ai_quick_check() {
+    local errors=()
+
+    command -v tmux &>/dev/null || errors+=("tmux")
+    command -v "$CLAUDE_CMD" &>/dev/null || errors+=("$CLAUDE_CMD")
+    [ -d "$CODING_BASE" ] || errors+=("CODING_BASE 目录")
+
+    if [ ${#errors[@]} -gt 0 ]; then
+        echo "⚠ AI 自动化工具包: 缺少依赖 - ${errors[*]}"
+        echo "  运行 'check-deps' 查看详情"
+        return 1
+    fi
+    return 0
+}
+
+# 依赖守卫 (用于关键函数入口)
+# 用法: _ai_require_deps tmux claude || return 1
+_ai_require_deps() {
+    local missing=()
+
+    for dep in "$@"; do
+        case "$dep" in
+            tmux|git|at|watch)
+                command -v "$dep" &>/dev/null || missing+=("$dep")
+                ;;
+            claude)
+                command -v "$CLAUDE_CMD" &>/dev/null || missing+=("claude")
+                ;;
+            coding_base)
+                [ -d "$CODING_BASE" ] || missing+=("CODING_BASE 目录")
+                ;;
+        esac
+    done
+
+    if [ ${#missing[@]} -gt 0 ]; then
+        echo "✗ 缺少依赖: ${missing[*]}"
+        echo "  运行 'check-deps' 查看详情和安装建议"
+        return 1
+    fi
+    return 0
+}
+
+#===============================================================================
 # 核心函数
 #===============================================================================
 
@@ -39,8 +257,11 @@ tsc() {
 
 # 快速启动项目
 fire() {
+    # 检查必需依赖
+    _ai_require_deps tmux claude coding_base || return 1
+
     local project_input="$1"
-    
+
     [ -z "$project_input" ] && {
         echo "可用项目:"
         ls -1 "$CODING_BASE" 2>/dev/null | grep -v "^\."
@@ -105,12 +326,19 @@ schedule-checkin() {
     
     # 使用 at 命令 (需要安装)
     if command -v at &> /dev/null; then
+        # 检查 atd 服务状态
+        if command -v systemctl &>/dev/null && ! systemctl is-active atd &>/dev/null; then
+            echo "⚠ atd 服务未运行，at 命令可能不会执行"
+            echo "  → $(_ai_install_hint atd)"
+        fi
         echo "tsc '$target' '继续工作。上次备注: $note'" | at now + "$minutes" minutes 2>/dev/null
         echo "✓ 已调度 ${minutes} 分钟后检查"
     else
         # 备选: 后台 sleep
+        echo "⚠ at 未安装，使用后台 sleep (关闭终端会丢失任务)"
+        echo "  → $(_ai_install_hint at)"
         (sleep $((minutes * 60)) && tsc "$target" "继续工作。上次备注: $note") &
-        echo "✓ 已调度后台任务 (需保持终端开启)"
+        echo "✓ 已调度后台任务 (PID: $!)"
     fi
 }
 
@@ -181,9 +409,16 @@ view-spec() {
 
 # 启动自动提交
 start-auto-commit() {
+    # 检查 git
+    if ! command -v git &>/dev/null; then
+        echo "✗ git 未安装，自动提交不可用"
+        echo "  → $(_ai_install_hint git)"
+        return 1
+    fi
+
     local session="${1:-$(tmux display-message -p '#{session_name}' 2>/dev/null)}"
     local interval="${2:-30}"  # 默认 30 分钟
-    
+
     [ -z "$session" ] && { echo "用法: start-auto-commit [会话名] [间隔分钟]"; return 1; }
     
     # 获取项目路径
@@ -729,6 +964,9 @@ alias tp='tmux list-panes'
 # 使用说明
 #===============================================================================
 #
+# 环境检查:
+#   check-deps                  检查依赖并显示安装建议
+#
 # 基础:
 #   fire <project>              快速启动项目
 #   tsc <target> <msg>          发送消息到 Claude Code
@@ -773,3 +1011,6 @@ alias tp='tmux list-panes'
 #   clean-agent-logs [days]     清理旧日志
 #
 #===============================================================================
+
+# source 时运行快速检查
+_ai_quick_check
