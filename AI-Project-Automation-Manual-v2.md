@@ -151,11 +151,21 @@ sudo apt install at && sudo systemctl enable --now atd
 
 ### 日志系统
 
+日志保存在 `~/.agent-logs/` 目录 (可通过 `AGENT_LOG_DIR` 环境变量修改)。
+
 | 命令 | 说明 |
 |------|------|
+| `init-agent-logs` | 初始化日志目录 |
 | `capture-agent-log <session>` | 捕获对话 |
-| `view-agent-logs [session]` | 查看日志 |
+| `save-agent-log [session]` | 保存当前会话日志 |
+| `view-agent-logs [session]` | 查看今日日志 |
+| `clean-agent-logs [days]` | 清理旧日志 (默认7天) |
 | `end-agent <session> <window>` | 结束并保存 |
+
+日志文件类型：
+- `health_*.log` - 系统健康检查报告
+- `<session>_<date>.log` - 会话日志
+- `<session>_<window>_*.log` - 窗口快照
 
 ### Claude Code 斜杠命令
 

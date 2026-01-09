@@ -233,6 +233,40 @@ export CLAUDE_CMD=claude
 
 # 消息发送延迟秒数 (默认: 1)
 export DEFAULT_DELAY=1
+
+# 日志目录 (默认: ~/.agent-logs)
+export AGENT_LOG_DIR=~/.agent-logs
+```
+
+## 日志管理
+
+系统日志保存在 `~/.agent-logs/` 目录：
+
+```
+~/.agent-logs/
+├── health_20260110_063402.log    # 健康检查报告
+├── idiom-web_20260110.log        # 会话日志
+└── idiom-web_Claude_*.log        # 窗口快照
+```
+
+### 日志命令
+
+| 命令 | 说明 |
+|------|------|
+| `init-agent-logs` | 初始化日志目录 |
+| `view-agent-logs [session]` | 查看今日日志 |
+| `save-agent-log [session]` | 保存当前会话日志 |
+| `clean-agent-logs [days]` | 清理旧日志 (默认7天) |
+
+```bash
+# 查看今日所有日志
+view-agent-logs
+
+# 查看特定会话日志
+view-agent-logs idiom-web
+
+# 清理超过30天的日志
+clean-agent-logs 30
 ```
 
 ## 文档
