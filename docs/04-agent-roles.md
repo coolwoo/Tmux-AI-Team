@@ -21,7 +21,22 @@
 
 **调用方式**:
 ```
-/deploy-team <项目名称> [规模] [SPEC: 规范文件路径]
+/deploy-team <项目名称> [small|medium|large] [SPEC: <规范文件路径>]
+```
+
+**示例**:
+```bash
+# 仅项目名（默认 medium 规模）
+/deploy-team my-project
+
+# 指定规模
+/deploy-team my-project large
+
+# 带规范文件
+/deploy-team my-project SPEC: docs/requirements.md
+
+# 完整参数
+/deploy-team my-project medium SPEC: "docs/project spec.md"
 ```
 
 **团队规模配置**:
@@ -65,12 +80,22 @@
 
 **调用方式**:
 ```
-/pm-oversight <项目名称> SPEC: <规范文件路径>
+/pm-oversight <项目名称> [任务描述] [SPEC: <规范文件路径>]
 ```
 
 **示例**:
-```
+```bash
+# 仅项目名
+/pm-oversight frontend-project
+
+# 带任务描述
+/pm-oversight frontend-project 实现用户登录功能
+
+# 带规范文件
 /pm-oversight frontend-project SPEC: ~/Coding/my-app/project_spec.md
+
+# 完整参数
+/pm-oversight backend-project API 开发 SPEC: "/path/to/spec.md"
 ```
 
 **核心职责**:
@@ -99,6 +124,14 @@ tmux send-keys -t <session>:Claude "消息内容" C-m
 - 逐个功能验收
 - 对照规范检查
 - 及时反馈错误信息
+
+**工程师状态判断**:
+
+| 状态 | 判断标准 | 响应策略 |
+|-----|---------|---------|
+| 活跃 (ACTIVE) | 最近 5 分钟有输出 | 不打断，继续观察 |
+| 空闲 (IDLE) | 超过 5 分钟无输出 | 询问进度或分配新任务 |
+| 阻塞 (BLOCKED) | 输出含 error/failed/blocked | 主动介入，提供帮助 |
 
 ---
 
@@ -273,7 +306,7 @@ TEST REPORT [QA] [时间]
 /role-reviewer <审查范围/PR/分支>
 ```
 
-**特点**: **只有只读权限** - 没有 Write/Edit 工具，只能审查不能修改代码
+**特点**: 具有完整权限，可以创建审查报告文件和提交审查意见
 
 **审查清单**:
 
@@ -341,3 +374,76 @@ REVIEW SUMMARY [Reviewer]
 - **DevOps** 负责部署和基础设施
 
 **通信方式**: 通过 tmux 消息传递实现跨窗口通信
+
+---
+
+## 跨角色通信格式
+
+### Developer ↔ QA
+
+```
+# Developer 请求测试
+REQUEST TEST [Developer → QA]
+功能: 功能名称
+分支: feature/xxx
+测试点: 需要测试的要点
+
+# QA 报告 Bug
+BUG [QA → Developer] [严重程度: HIGH/MED/LOW]
+标题: 简短描述
+复现步骤: 1. ... 2. ...
+期望/实际结果: ...
+
+# QA 确认修复
+BUG VERIFIED [QA → Developer]
+Bug: #编号
+状态: 已修复/仍存在
+```
+
+### Developer ↔ Reviewer
+
+```
+# Developer 请求审查
+REVIEW REQUEST [Developer → Reviewer]
+分支: feature/xxx
+变更: 主要变更列表
+关注点: 希望重点审查的部分
+
+# Reviewer 返回意见
+REVIEW RESULT [Reviewer → Developer]
+结论: APPROVED / CHANGES_REQUESTED / BLOCKED
+阻塞问题: (必须修复的列表)
+建议改进: (非阻塞的列表)
+```
+
+### DevOps ↔ Team
+
+```
+# 部署通知
+DEPLOY NOTICE [DevOps → Team]
+环境: dev/staging/prod
+版本: v1.2.3
+状态: 开始/进行中/完成/回滚
+
+# 事故通知
+INCIDENT ALERT [DevOps → Team]
+严重程度: P1/P2/P3
+影响: 受影响的服务
+状态: 调查中/已定位/修复中/已解决
+```
+
+### QA/DevOps → PM
+
+```
+# 测试报告
+TEST REPORT [QA → PM]
+功能: 功能名称
+结果: PASS/FAIL
+建议: 是否可以发布
+
+# 部署确认
+DEPLOY ACK [DevOps → PM]
+请求: 部署版本到环境
+状态: 已收到/准备就绪
+前置检查: 测试/审查/回滚方案
+```

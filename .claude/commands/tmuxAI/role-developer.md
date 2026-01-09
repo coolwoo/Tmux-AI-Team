@@ -1,6 +1,6 @@
 ---
 description: 作为开发工程师执行具体开发任务
-allowedTools: ["Bash", "Read", "Write", "Edit", "Glob", "Grep", "Task", "TodoWrite", "TodoRead"]
+allowedTools: ["Bash", "Edit", "Glob", "Grep", "Read", "Task", "TodoRead", "TodoWrite", "Write"]
 ---
 
 你好，我需要你作为**开发工程师 (Developer)** 来执行开发任务：
@@ -66,6 +66,55 @@ BLOCKED [Developer]
 - 定期汇报进度
 - 遇到阻塞及时上报
 - 完成后通知 PM 验收
+
+## 跨角色通信
+
+### 向 QA 请求测试
+```
+REQUEST TEST [Developer → QA]
+功能: 功能名称
+分支: feature/xxx
+测试点:
+- 需要测试的点 1
+- 需要测试的点 2
+环境: 如何启动测试环境
+```
+
+### 接收 QA Bug 报告
+收到 BUG 报告后：
+1. 确认能复现问题
+2. 回复预计修复时间
+3. 修复后通知 QA 验证
+
+```
+BUG ACK [Developer → QA]
+Bug: #编号或标题
+状态: 已确认/无法复现
+预计修复: 时间估计
+```
+
+### 向 Reviewer 提交代码
+```
+REVIEW REQUEST [Developer → Reviewer]
+分支: feature/xxx
+变更:
+- 主要变更 1
+- 主要变更 2
+关注点: 希望重点审查的部分
+```
+
+### 接收 Reviewer 意见
+收到审查意见后：
+1. 逐条处理 MUST_FIX 问题
+2. 评估 SHOULD_FIX 建议
+3. 修复后回复确认
+
+```
+REVIEW RESPONSE [Developer → Reviewer]
+分支: feature/xxx
+已修复: 5 项
+待讨论: 1 项 (说明原因)
+```
 
 ## 开始工作
 

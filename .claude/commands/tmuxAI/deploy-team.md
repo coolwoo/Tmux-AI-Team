@@ -1,6 +1,6 @@
 ---
-description: 根据项目规模部署合适的 Agent 团队
-allowedTools: ["Bash", "Read", "Write", "Edit", "Glob", "Grep", "Task", "TodoWrite", "TodoRead"]
+description: 作为部署编排员根据项目规模部署合适的 Agent 团队
+allowedTools: ["Bash", "Edit", "Glob", "Grep", "Read", "Task", "TodoRead", "TodoWrite", "Write"]
 ---
 
 你好，我需要你帮助部署 Agent 团队：
@@ -9,10 +9,30 @@ $ARGUMENTS
 
 ## 解析参数
 
-请从参数中识别：
-1. **项目名称** - 要部署团队的项目
-2. **团队规模** - small/medium/large (可选)
-3. **规范文件** - SPEC: 后的路径 (可选)
+**参数格式**:
+```
+<项目名称> [small|medium|large] [SPEC: <规范文件路径>]
+```
+
+**示例**:
+```bash
+# 仅项目名（默认 medium 规模）
+my-project
+
+# 指定规模
+my-project large
+
+# 带规范文件
+my-project SPEC: docs/requirements.md
+
+# 完整参数
+my-project medium SPEC: "docs/project spec.md"
+```
+
+**解析规则**:
+1. **项目名称** - 第一个参数，必须
+2. **团队规模** - small/medium/large，可选，默认 medium
+3. **规范文件** - `SPEC:` 后的路径，可选，路径含空格时使用引号
 
 ## 团队配置建议
 
