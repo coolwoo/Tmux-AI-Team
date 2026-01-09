@@ -236,6 +236,108 @@ _ai_require_deps() {
     return 0
 }
 
+# 统一路径解析
+# 支持: 绝对路径(/path)、~展开(~/path)、相对路径(./path)、项目名(在CODING_BASE搜索)
+# 用法: _resolve_project_path <input>
+# 输出: 绝对路径 (stdout)
+# 返回: 0=成功, 1=失败
+_resolve_project_path() {
+    local input="$1"
+
+    case "$input" in
+        /*)
+            # 绝对路径
+            if [ -d "$input" ]; then
+                echo "$input"
+                return 0
+            else
+                echo "路径不存在: $input" >&2
+                return 1
+            fi
+            ;;
+        "~"|"~"/*)
+            # ~ 展开
+            local expanded="${input/#\~/$HOME}"
+            if [ -d "$expanded" ]; then
+                echo "$expanded"
+                return 0
+            else
+                echo "路径不存在: $input" >&2
+                return 1
+            fi
+            ;;
+        ./*)
+            # 相对路径
+            local resolved
+            resolved="$(cd "$input" 2>/dev/null && pwd)" || {
+                echo "路径不存在: $input" >&2
+                return 1
+            }
+            echo "$resolved"
+            return 0
+            ;;
+        *)
+            # 项目名：在 CODING_BASE 中模糊搜索
+            local project_name
+            project_name=$(ls -1 "$CODING_BASE" 2>/dev/null | grep -i "$input" | head -1)
+            if [ -n "$project_name" ]; then
+                echo "$CODING_BASE/$project_name"
+                return 0
+            else
+                echo "未找到项目: $input" >&2
+                return 1
+            fi
+            ;;
+    esac
+}
+
+#===============================================================================
+# 项目辅助函数
+#===============================================================================
+
+# 检测项目类型
+# 用法: _detect_project_type <项目路径>
+_detect_project_type() {
+    local path="$1"
+
+    [ -f "$path/package.json" ] && {
+        grep -q '"next"' "$path/package.json" 2>/dev/null && echo "nextjs" && return
+        grep -q '"vite"' "$path/package.json" 2>/dev/null && echo "vite" && return
+        grep -q '"vue"' "$path/package.json" 2>/dev/null && echo "vue" && return
+        grep -q '"react"' "$path/package.json" 2>/dev/null && echo "react" && return
+        echo "node" && return
+    }
+    [ -f "$path/manage.py" ] && echo "django" && return
+    [ -f "$path/requirements.txt" ] || [ -f "$path/pyproject.toml" ] && echo "python" && return
+    [ -f "$path/go.mod" ] && echo "go" && return
+    [ -f "$path/Cargo.toml" ] && echo "rust" && return
+    [ -f "$path/Gemfile" ] && echo "ruby" && return
+    [ -f "$path/pom.xml" ] && echo "java-maven" && return
+    [ -f "$path/build.gradle" ] && echo "java-gradle" && return
+    echo "unknown"
+}
+
+# 等待 Claude 启动就绪
+# 用法: _wait_for_claude <target> [max_wait]
+_wait_for_claude() {
+    local target="$1"
+    local max_wait="${2:-30}"
+    local count=0
+
+    while [ $count -lt $max_wait ]; do
+        if tmux capture-pane -t "$target" -p 2>/dev/null | grep -qE "(Claude|❯|Try|你好)"; then
+            echo "✓ Claude 已就绪 (${count}s)"
+            return 0
+        fi
+        sleep 1
+        ((count++))
+        [ $((count % 10)) -eq 0 ] && echo "  等待中... (${count}s)"
+    done
+
+    echo "⚠ Claude 启动超时 (${max_wait}s)，继续执行..."
+    return 1
+}
+
 #===============================================================================
 # 核心函数
 #===============================================================================
@@ -256,51 +358,71 @@ tsc() {
 }
 
 # 快速启动项目
+# 支持: 项目名(模糊搜索)、绝对路径、~/路径、./相对路径
 fire() {
-    # 检查必需依赖
-    _ai_require_deps tmux claude coding_base || return 1
+    # 检查基础依赖
+    _ai_require_deps tmux claude || return 1
 
     local project_input="$1"
 
+    # 无参数时列出可用项目
     [ -z "$project_input" ] && {
+        _ai_require_deps coding_base || return 1
         echo "可用项目:"
         ls -1 "$CODING_BASE" 2>/dev/null | grep -v "^\."
+        echo ""
+        echo "提示: 也支持绝对路径 fire /path/to/project"
         return 1
     }
-    
-    local project_name=$(ls -1 "$CODING_BASE" 2>/dev/null | grep -i "$project_input" | head -1)
-    [ -z "$project_name" ] && { echo "未找到: $project_input"; return 1; }
-    
-    local project_path="$CODING_BASE/$project_name"
+
+    # 使用统一路径解析
+    local project_path
+    # 路径类型输入不需要 CODING_BASE
+    case "$project_input" in
+        /*|"~"|"~"/*|./*)
+            project_path=$(_resolve_project_path "$project_input") || return 1
+            ;;
+        *)
+            _ai_require_deps coding_base || return 1
+            project_path=$(_resolve_project_path "$project_input") || return 1
+            ;;
+    esac
+
+    local project_name
+    project_name="$(basename "$project_path")"
     local session="${project_name//[^a-zA-Z0-9_-]/-}"
-    
+    local project_type
+    project_type=$(_detect_project_type "$project_path")
+
     echo "启动项目: $project_name"
     echo "路径: $project_path"
-    
+    echo "类型: $project_type"
+
     # 已存在则直接附加
     tmux has-session -t "$session" 2>/dev/null && {
+        echo "会话已存在，正在附加..."
         tmux attach -t "$session"
         return 0
     }
-    
+
     # 创建会话
+    echo "创建 tmux 会话..."
     tmux new-session -d -s "$session" -c "$project_path" -n "Claude"
     tmux new-window -t "$session" -n "Shell" -c "$project_path"
     tmux new-window -t "$session" -n "Server" -c "$project_path"
-    
+
     # 启动 Claude
     tmux send-keys -t "$session:Claude" "$CLAUDE_CMD" Enter
-    echo "等待 Claude 启动..."
-    sleep 5
-    
+    _wait_for_claude "$session:Claude" 30
+
     # 检查是否有项目规范
     local spec_note=""
     [ -f "$project_path/project_spec.md" ] && spec_note="请先阅读 project_spec.md。"
-    
+
     # 发送简报
-    tsc "$session:Claude" "你负责 $project_name 项目。$spec_note 请: 1) 分析项目 2) 启动 dev server (Server 窗口) 3) 检查 issues/TODO 4) 开始工作。Git 规则: 每 30 分钟提交一次。"
-    
-    echo "项目启动完成!"
+    tsc "$session:Claude" "你负责 $project_name 项目 ($project_type)。$spec_note 请: 1) 分析项目 2) 启动 dev server (Server 窗口) 3) 检查 issues/TODO 4) 开始工作。Git 规则: 每 30 分钟提交一次。"
+
+    echo "✓ 项目启动完成!"
     tmux attach -t "$session"
 }
 
@@ -354,14 +476,25 @@ read-next-note() {
 #===============================================================================
 
 # 创建项目规范
+# 支持: 项目名(模糊搜索)、绝对路径、~/路径、./相对路径
 create-spec() {
     local project_input="$1"
-    [ -z "$project_input" ] && { echo "用法: create-spec <项目名>"; return 1; }
-    
-    local project_name=$(ls -1 "$CODING_BASE" 2>/dev/null | grep -i "$project_input" | head -1)
-    [ -z "$project_name" ] && { echo "未找到: $project_input"; return 1; }
-    
-    local project_path="$CODING_BASE/$project_name"
+    [ -z "$project_input" ] && { echo "用法: create-spec <项目名或路径>"; return 1; }
+
+    # 使用统一路径解析
+    local project_path
+    case "$project_input" in
+        /*|"~"|"~"/*|./*)
+            project_path=$(_resolve_project_path "$project_input") || return 1
+            ;;
+        *)
+            _ai_require_deps coding_base || return 1
+            project_path=$(_resolve_project_path "$project_input") || return 1
+            ;;
+    esac
+
+    local project_name
+    project_name="$(basename "$project_path")"
     local spec_file="$project_path/project_spec.md"
     
     [ -f "$spec_file" ] && { echo "规范已存在: $spec_file"; cat "$spec_file"; return 0; }
@@ -392,14 +525,24 @@ EOF
 }
 
 # 查看项目规范
+# 支持: 项目名(模糊搜索)、绝对路径、~/路径、./相对路径
 view-spec() {
     local project_input="$1"
     [ -z "$project_input" ] && project_input=$(tmux display-message -p "#{session_name}" 2>/dev/null)
-    
-    local project_name=$(ls -1 "$CODING_BASE" 2>/dev/null | grep -i "$project_input" | head -1)
-    [ -z "$project_name" ] && { echo "未找到项目"; return 1; }
-    
-    local spec_file="$CODING_BASE/$project_name/project_spec.md"
+
+    # 使用统一路径解析
+    local project_path
+    case "$project_input" in
+        /*|"~"|"~"/*|./*)
+            project_path=$(_resolve_project_path "$project_input") || return 1
+            ;;
+        *)
+            _ai_require_deps coding_base || return 1
+            project_path=$(_resolve_project_path "$project_input") || return 1
+            ;;
+    esac
+
+    local spec_file="$project_path/project_spec.md"
     [ -f "$spec_file" ] && cat "$spec_file" || echo "无项目规范"
 }
 
@@ -1106,9 +1249,6 @@ goto() {
 alias ts='tmux list-sessions'
 alias tw='tmux list-windows'
 alias tp='tmux list-panes'
-
-# 完整脚本别名 (如果安装)
-[ -f "$HOME/bin/project-start-v2.sh" ] && alias project-start="$HOME/bin/project-start-v2.sh"
 
 #===============================================================================
 # 使用说明
