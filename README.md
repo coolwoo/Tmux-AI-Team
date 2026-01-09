@@ -30,11 +30,29 @@ cd Tmux-AI-Team
 ### 2. 安装 Bash 函数
 
 ```bash
-# 添加到 ~/.bashrc
-cat bashrc-ai-automation-v2.sh >> ~/.bashrc
+# 复制到用户目录
+cp bashrc-ai-automation-v2.sh ~/.ai-automation.sh
+
+# 在 ~/.bashrc 中添加 source 语句（仅需执行一次）
+echo '[ -f ~/.ai-automation.sh ] && source ~/.ai-automation.sh' >> ~/.bashrc
 
 # 重新加载
 source ~/.bashrc
+```
+
+**更新方法：**
+```bash
+# 直接替换文件即可
+cp bashrc-ai-automation-v2.sh ~/.ai-automation.sh
+```
+
+**卸载方法：**
+```bash
+# 删除文件
+rm ~/.ai-automation.sh
+
+# 从 ~/.bashrc 中删除 source 行
+# 手动编辑或: sed -i '/ai-automation/d' ~/.bashrc
 ```
 
 ### 3. 安装 Claude Code 命令 (可选)
