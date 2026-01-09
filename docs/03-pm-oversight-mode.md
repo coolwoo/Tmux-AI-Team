@@ -17,7 +17,7 @@ PM 监督模式让一个 Claude Agent 作为项目经理 (PM)，自动监督另�
 ║  │  ✅ 对照规范验收功能                                            │  ║
 ║  │  ⏰ 安排下次检查时间                                            │  ║
 ║  ├────────────────────────────────────────────────────────────────┤  ║
-║  │  启动方式: /pm-oversight <项目> SPEC: <规范文件>                │  ║
+║  │  启动方式: /tmuxAI:pm-oversight <项目> SPEC: <规范文件>                │  ║
 ║  └────────────────────────────────────────────────────────────────┘  ║
 ╚═══════════════════════════════════╦══════════════════════════════════╝
                                     │
@@ -69,7 +69,7 @@ PM 监督模式让一个 Claude Agent 作为项目经理 (PM)，自动监督另�
 
 ```bash
 # 确保命令文件存在
-ls .claude/commands/pm-oversight.md
+ls .claude/commands/tmuxAI/pm-oversight.md
 ```
 
 ### 步骤 1: 创建项目规范
@@ -125,7 +125,7 @@ Engineer Agent 会自动开始工作。
 claude
 
 # 执行 PM 监督命令
-/pm-oversight my-project SPEC: ~/Coding/my-project/project_spec.md
+/tmuxAI:pm-oversight my-project SPEC: ~/Coding/my-project/project_spec.md
 ```
 
 PM Agent 会：
@@ -371,7 +371,7 @@ tsc my-project:Claude "请注意：当前任务应聚焦于用户认证系统。
 
 ```bash
 # PM 命令支持多项目
-/pm-oversight frontend 和 backend SPEC: ~/Coding/shared/project_spec.md
+/tmuxAI:pm-oversight frontend 和 backend SPEC: ~/Coding/shared/project_spec.md
 ```
 
 PM 会轮流检查各项目。
@@ -453,7 +453,7 @@ tsc my-project:Claude "提醒：请专注于当前任务，避免偏离 Spec 定
 
 | 命令 | 说明 |
 |------|------|
-| `/pm-oversight <项目> SPEC: <文件>` | 启动 PM 监督 |
+| `/tmuxAI:pm-oversight <项目> SPEC: <文件>` | 启动 PM 监督 |
 | `monitor-snapshot [session]` | 生成监控快照 |
 | `check-agent <session>` | 检查 Agent 状态 |
 | `tsc <target> <msg>` | 发送消息 |
@@ -493,7 +493,7 @@ PM Agent 在 Claude Code 中运行。关闭终端后 PM 会话会丢失，需要
 claude
 
 # 3. 重新执行 PM 监督命令
-/pm-oversight my-project SPEC: ~/Coding/my-project/project_spec.md
+/tmuxAI:pm-oversight my-project SPEC: ~/Coding/my-project/project_spec.md
 ```
 
 **注意**: PM 重启后会重新阅读 Spec，从头开始监督流程。如果 Engineer 已经完成部分工作，PM 会在检查时发现并跳过已完成的部分。
@@ -517,7 +517,7 @@ Ctrl+b d          # 脱离 Engineer 会话
 # 方法 1: 在 tmux 中运行 PM
 tmux new -s pm-session
 claude
-/pm-oversight my-project SPEC: ...
+/tmuxAI:pm-oversight my-project SPEC: ...
 # Ctrl+b d 脱离
 
 # 方法 2: 使用 nohup (不推荐，无法交互)
@@ -590,7 +590,7 @@ fire auth-project
 ```bash
 # 终端 2
 claude
-/pm-oversight auth-project SPEC: ~/Coding/auth-project/project_spec.md
+/tmuxAI:pm-oversight auth-project SPEC: ~/Coding/auth-project/project_spec.md
 ```
 
 **4. PM 执行监督**

@@ -149,8 +149,8 @@ echo "验收功能X，检查服务器状态" > /tmp/next_check_note.txt
 ## 使用示例
 
 ```
-/pm-oversight frontend-project SPEC: ~/Coding/my-app/project_spec.md
-/pm-oversight backend API 和 frontend UI SPEC: /path/to/spec.md
+/tmuxAI:pm-oversight frontend-project SPEC: ~/Coding/my-app/project_spec.md
+/tmuxAI:pm-oversight backend API 和 frontend UI SPEC: /path/to/spec.md
 ```
 
 ---

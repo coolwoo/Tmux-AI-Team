@@ -78,15 +78,22 @@ fire backend
 fire mobile
 ```
 
-或者使用 `--no-attach` 选项在后台启动：
+或者使用 tmux 直接在后台创建会话：
 
 ```bash
 # 在同一终端启动多个项目（不附加）
-project-start frontend --no-attach
-project-start backend --no-attach
-project-start mobile --no-attach
+# 先启动第一个项目
+fire frontend
+# 按 Ctrl+b d 脱离会话
 
-# 然后选择要查看的项目
+# 启动第二个项目
+fire backend
+# 按 Ctrl+b d 脱离会话
+
+# 启动第三个项目
+fire mobile
+
+# 或者选择要查看的项目
 goto frontend
 ```
 

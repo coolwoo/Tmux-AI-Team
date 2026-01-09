@@ -180,10 +180,10 @@ fire my-project
 
 # 终端 2: 启动 PM Agent
 claude
-/pm-oversight my-project SPEC: ~/Coding/my-project/project_spec.md
+/tmuxAI:pm-oversight my-project SPEC: ~/Coding/my-project/project_spec.md
 ```
 
-详见 [PM 监督模式手册](docs/pm-oversight-mode.md)
+详见 [PM 监督模式手册](docs/03-pm-oversight-mode.md)
 
 ## 核心命令
 
@@ -255,7 +255,7 @@ export AGENT_LOG_DIR=~/.agent-logs
 |------|------|
 | `init-agent-logs` | 初始化日志目录 |
 | `view-agent-logs [session]` | 查看今日日志 |
-| `save-agent-log [session]` | 保存当前会话日志 |
+| `capture-agent-log <session>` | 捕获会话日志到文件 |
 | `clean-agent-logs [days]` | 清理旧日志 (默认7天) |
 
 ```bash
@@ -272,9 +272,11 @@ clean-agent-logs 30
 ## 文档
 
 - [用户手册](AI-Project-Automation-Manual-v2.md)
-- [多项目模式](docs/multi-project-mode.md)
-- [PM 监督模式](docs/pm-oversight-mode.md)
-- [最佳实践](docs/best-practices.md)
+- [快速开始](docs/01-quick-start.md)
+- [多项目模式](docs/02-multi-project-mode.md)
+- [PM 监督模式](docs/03-pm-oversight-mode.md)
+- [Agent 角色](docs/04-agent-roles.md)
+- [最佳实践](docs/05-best-practices.md)
 
 ## 项目结构
 

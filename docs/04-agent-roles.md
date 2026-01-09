@@ -6,12 +6,12 @@
 
 | 角色 | 命令 | 用途 |
 |-----|------|-----|
-| deploy-team | `/deploy-team` | 根据项目规模部署 Agent 团队 |
-| pm-oversight | `/pm-oversight` | PM 监督工程师执行 |
-| role-developer | `/role-developer` | 开发工程师执行开发任务 |
-| role-devops | `/role-devops` | DevOps 处理部署和基础设施 |
-| role-qa | `/role-qa` | QA 工程师测试和质量保证 |
-| role-reviewer | `/role-reviewer` | 代码审查员进行代码评审 |
+| deploy-team | `/tmuxAI:deploy-team` | 根据项目规模部署 Agent 团队 |
+| pm-oversight | `/tmuxAI:pm-oversight` | PM 监督工程师执行 |
+| role-developer | `/tmuxAI:role-developer` | 开发工程师执行开发任务 |
+| role-devops | `/tmuxAI:role-devops` | DevOps 处理部署和基础设施 |
+| role-qa | `/tmuxAI:role-qa` | QA 工程师测试和质量保证 |
+| role-reviewer | `/tmuxAI:role-reviewer` | 代码审查员进行代码评审 |
 
 ---
 
@@ -21,22 +21,22 @@
 
 **调用方式**:
 ```
-/deploy-team <项目名称> [small|medium|large] [SPEC: <规范文件路径>]
+/tmuxAI:deploy-team <项目名称> [small|medium|large] [SPEC: <规范文件路径>]
 ```
 
 **示例**:
 ```bash
 # 仅项目名（默认 medium 规模）
-/deploy-team my-project
+/tmuxAI:deploy-team my-project
 
 # 指定规模
-/deploy-team my-project large
+/tmuxAI:deploy-team my-project large
 
 # 带规范文件
-/deploy-team my-project SPEC: docs/requirements.md
+/tmuxAI:deploy-team my-project SPEC: docs/requirements.md
 
 # 完整参数
-/deploy-team my-project medium SPEC: "docs/project spec.md"
+/tmuxAI:deploy-team my-project medium SPEC: "docs/project spec.md"
 ```
 
 **团队规模配置**:
@@ -80,22 +80,22 @@
 
 **调用方式**:
 ```
-/pm-oversight <项目名称> [任务描述] [SPEC: <规范文件路径>]
+/tmuxAI:pm-oversight <项目名称> [任务描述] [SPEC: <规范文件路径>]
 ```
 
 **示例**:
 ```bash
 # 仅项目名
-/pm-oversight frontend-project
+/tmuxAI:pm-oversight frontend-project
 
 # 带任务描述
-/pm-oversight frontend-project 实现用户登录功能
+/tmuxAI:pm-oversight frontend-project 实现用户登录功能
 
 # 带规范文件
-/pm-oversight frontend-project SPEC: ~/Coding/my-app/project_spec.md
+/tmuxAI:pm-oversight frontend-project SPEC: ~/Coding/my-app/project_spec.md
 
 # 完整参数
-/pm-oversight backend-project API 开发 SPEC: "/path/to/spec.md"
+/tmuxAI:pm-oversight backend-project API 开发 SPEC: "/path/to/spec.md"
 ```
 
 **核心职责**:
@@ -141,7 +141,7 @@ tmux send-keys -t <session>:Claude "消息内容" C-m
 
 **调用方式**:
 ```
-/role-developer <任务描述>
+/tmuxAI:role-developer <任务描述>
 ```
 
 **核心职责**:
@@ -193,7 +193,7 @@ BLOCKED [Developer]
 
 **调用方式**:
 ```
-/role-devops <任务描述>
+/tmuxAI:role-devops <任务描述>
 ```
 
 **核心职责**:
@@ -248,7 +248,7 @@ INCIDENT [DevOps] [严重程度: P1/P2/P3]
 
 **调用方式**:
 ```
-/role-qa <测试任务描述>
+/tmuxAI:role-qa <测试任务描述>
 ```
 
 **核心职责**:
@@ -303,7 +303,7 @@ TEST REPORT [QA] [时间]
 
 **调用方式**:
 ```
-/role-reviewer <审查范围/PR/分支>
+/tmuxAI:role-reviewer <审查范围/PR/分支>
 ```
 
 **特点**: 具有完整权限，可以创建审查报告文件和提交审查意见
