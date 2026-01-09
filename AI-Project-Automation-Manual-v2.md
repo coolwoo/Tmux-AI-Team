@@ -70,8 +70,8 @@
 # 1. 复制到用户目录
 cp bashrc-ai-automation-v2.sh ~/.ai-automation.sh
 
-# 2. 添加 source 语句（仅需一次）
-echo '[ -f ~/.ai-automation.sh ] && source ~/.ai-automation.sh' >> ~/.bashrc
+# 2. 添加 source 语句（自动检查避免重复）
+grep -q 'ai-automation.sh' ~/.bashrc || echo '[ -f ~/.ai-automation.sh ] && source ~/.ai-automation.sh' >> ~/.bashrc
 
 # 3. 生效
 source ~/.bashrc
