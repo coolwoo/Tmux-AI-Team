@@ -367,21 +367,23 @@ find-window() {
     echo "查找窗口: $search_name"
     echo "------------------------------------------------------"
 
-    local found=0
-    tmux list-sessions -F "#{session_name}" 2>/dev/null | while read -r session; do
-        tmux list-windows -t "$session" -F "#{window_index}:#{window_name}" 2>/dev/null | while read -r window_info; do
-            local window_index=$(echo "$window_info" | cut -d: -f1)
-            local window_name=$(echo "$window_info" | cut -d: -f2)
+    local results=""
+    local session window_info window_index window_name
+
+    for session in $(tmux list-sessions -F "#{session_name}" 2>/dev/null); do
+        for window_info in $(tmux list-windows -t "$session" -F "#{window_index}:#{window_name}" 2>/dev/null); do
+            window_index=$(echo "$window_info" | cut -d: -f1)
+            window_name=$(echo "$window_info" | cut -d: -f2)
 
             # 模糊匹配 (不区分大小写)
             if echo "$window_name" | grep -iq "$search_name"; then
                 echo "  $session:$window_index ($window_name)"
-                found=1
+                results="found"
             fi
         done
     done
 
-    [ "$found" = "0" ] && echo "  未找到匹配的窗口"
+    [ -z "$results" ] && echo "  未找到匹配的窗口"
 }
 
 #===============================================================================
