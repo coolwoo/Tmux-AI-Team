@@ -1,0 +1,217 @@
+# Tmux-AI-Team
+
+AI 项目自动化工具包 - 将 tmux 与 Claude Code 集成，实现自主多 Agent 开发工作流。
+
+## 功能特性
+
+- **自主开发**: 在 tmux 会话中启动 Claude Code Agent 进行项目开发
+- **自调度**: Agent 可使用 `at` 命令安排自己的下次检查时间
+- **多 Agent 通信**: 通过 tmux 消息传递实现跨会话通信
+- **自动 Git 提交**: 可配置间隔的定时提交
+- **PM 监督模式**: AI 项目经理自动监督开发 Agent
+- **团队协作**: 支持 Developer、QA、DevOps、Reviewer 等角色
+
+## 系统要求
+
+- Linux / macOS / WSL
+- tmux
+- [Claude Code](https://claude.ai/code) CLI
+- `at` 命令 (用于自调度功能)
+
+## 安装
+
+### 1. 克隆仓库
+
+```bash
+git clone https://github.com/yourusername/Tmux-AI-Team.git
+cd Tmux-AI-Team
+```
+
+### 2. 安装 Bash 函数
+
+```bash
+# 添加到 ~/.bashrc
+cat bashrc-ai-automation-v2.sh >> ~/.bashrc
+
+# 重新加载
+source ~/.bashrc
+```
+
+### 3. 安装 Claude Code 命令 (可选)
+
+```bash
+# 复制斜杠命令到项目目录
+cp -r .claude/commands /path/to/your/project/.claude/
+```
+
+### 4. 安装 at 命令 (自调度功能)
+
+```bash
+# Ubuntu/Debian
+sudo apt install at
+sudo systemctl enable --now atd
+
+# macOS
+# at 命令已预装
+```
+
+## 快速开始
+
+### 启动项目
+
+```bash
+# 快速启动（自动创建 tmux 会话并启动 Claude）
+fire my-project
+
+# 或者指定项目路径
+CODING_BASE=~/Projects fire my-app
+```
+
+### 查看 Agent 状态
+
+```bash
+# 列出所有活跃 Agent
+list-agents
+
+# 检查特定 Agent
+check-agent my-project
+
+# 生成监控快照
+monitor-snapshot my-project
+```
+
+### 发送消息
+
+```bash
+# 向 Agent 发送消息
+tsc my-project:Claude "请实现用户登录功能"
+
+# 广播到所有 Agent
+broadcast "准备发布，请完成当前任务"
+```
+
+## 使用模式
+
+### 单项目模式
+
+一个 tmux 会话包含一个 Claude Agent：
+
+```
+╔═══════════════════════════════════════════════════════════╗
+║                  tmux session: my-project                 ║
+╠═══════════════════╦═══════════════════╦═══════════════════╣
+║    Window 0       ║    Window 1       ║    Window 2       ║
+║    Claude Agent   ║    Shell          ║    Server         ║
+╚═══════════════════╩═══════════════════╩═══════════════════╝
+```
+
+### 多项目模式 (Orchestrator)
+
+你作为协调者管理多个 Agent：
+
+```bash
+# 启动多个项目
+fire frontend
+fire backend
+fire mobile
+
+# 协调工作
+send-to-agent frontend:Claude "请等待 backend API 完成"
+send-to-agent backend:Claude "请优先完成用户认证接口"
+```
+
+详见 [多项目模式手册](docs/multi-project-mode.md)
+
+### PM 监督模式
+
+让 AI 项目经理自动监督开发：
+
+```bash
+# 终端 1: 启动开发 Agent
+fire my-project
+
+# 终端 2: 启动 PM Agent
+claude
+/pm-oversight my-project SPEC: ~/Coding/my-project/project_spec.md
+```
+
+详见 [PM 监督模式手册](docs/pm-oversight-mode.md)
+
+## 核心命令
+
+| 命令 | 说明 |
+|------|------|
+| `fire <project>` | 快速启动项目 |
+| `tsc <target> <msg>` | 发送消息到 Claude |
+| `check-agent [session]` | 查看 Agent 状态 |
+| `monitor-snapshot [session]` | 生成监控快照 |
+| `list-agents` | 列出所有 Agent |
+| `broadcast <msg>` | 广播消息 |
+| `schedule-checkin <分钟> <备注>` | 调度下次检查 |
+| `start-auto-commit [session] [分钟]` | 启动自动提交 |
+
+## 通信协议
+
+标准化的 Agent 间通信格式：
+
+```bash
+# 状态更新
+send-status pm:Claude Developer "完成登录" "实现注册"
+
+# 任务分配
+send-task dev:Claude T001 "实现认证" "JWT登录流程" HIGH
+
+# Bug 报告
+send-bug dev:Claude HIGH "登录失败" "步骤" "期望" "实际"
+
+# 确认/完成
+send-ack pm:Claude T001
+send-done pm:Claude T001 "认证已完成"
+```
+
+## 配置
+
+在 `~/.bashrc` 中设置环境变量：
+
+```bash
+# 项目目录 (默认: ~/Coding)
+export CODING_BASE=~/Projects
+
+# Claude 命令 (默认: claude)
+export CLAUDE_CMD=claude
+
+# 消息发送延迟秒数 (默认: 1)
+export DEFAULT_DELAY=1
+```
+
+## 文档
+
+- [用户手册](AI-Project-Automation-Manual-v2.md)
+- [多项目模式](docs/multi-project-mode.md)
+- [PM 监督模式](docs/pm-oversight-mode.md)
+- [最佳实践](docs/best-practices.md)
+
+## 项目结构
+
+```
+Tmux-AI-Team/
+├── README.md                      # 本文件
+├── CLAUDE.md                      # Claude Code 项目指南
+├── bashrc-ai-automation-v2.sh     # Bash 函数 (核心)
+├── AI-Project-Automation-Manual-v2.md  # 用户手册
+├── .claude/commands/              # Claude Code 斜杠命令
+│   ├── pm-oversight.md            # PM 监督模式
+│   ├── deploy-team.md             # 团队部署
+│   ├── role-developer.md          # Developer 角色
+│   ├── role-qa.md                 # QA 角色
+│   ├── role-devops.md             # DevOps 角色
+│   └── role-reviewer.md           # Reviewer 角色
+└── docs/                          # 详细文档
+    ├── multi-project-mode.md      # 多项目模式手册
+    ├── pm-oversight-mode.md       # PM 监督模式手册
+    └── best-practices.md          # 最佳实践指南
+```
+
+## License
+
+MIT
