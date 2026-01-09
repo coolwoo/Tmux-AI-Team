@@ -1,12 +1,14 @@
-# AI 项目自动化启动器 v2.3 - 操作手册
+# AI 项目自动化启动器 v2.4 - 操作手册
 
 本手册是快速参考指南。详细使用说明请参阅专题文档：
 
 | 文档 | 内容 |
 |------|------|
-| [多项目模式](docs/multi-project-mode.md) | Orchestrator 架构，多 Agent 并行开发 |
-| [PM 监督模式](docs/pm-oversight-mode.md) | 自动化项目管理，无人值守开发 |
-| [最佳实践](docs/best-practices.md) | Git 规范、通信协议、反模式指南 |
+| [快速开始](docs/01-quick-start.md) | 安装配置、5分钟上手 |
+| [多项目模式](docs/02-multi-project-mode.md) | Orchestrator 架构，多 Agent 并行开发 |
+| [PM 监督模式](docs/03-pm-oversight-mode.md) | 自动化项目管理，无人值守开发 |
+| [Agent 角色](docs/04-agent-roles.md) | 斜杠命令、角色模板 |
+| [最佳实践](docs/05-best-practices.md) | Git 规范、通信协议、反模式指南 |
 
 ---
 
@@ -32,7 +34,7 @@
 
 ### 多项目模式
 
-> 详见 [多项目模式手册](docs/multi-project-mode.md)
+> 详见 [多项目模式手册](docs/02-multi-project-mode.md)
 
 ```
                     ┌───────────────────────┐
@@ -48,12 +50,12 @@
 
 ### PM 监督模式
 
-> 详见 [PM 监督模式手册](docs/pm-oversight-mode.md)
+> 详见 [PM 监督模式手册](docs/03-pm-oversight-mode.md)
 
 ```
     ┌─────────────────────────────────────────┐
     │         🎯 PM Agent (项目经理)           │
-    │       /pm-oversight 命令启动            │
+    │    /tmuxAI:pm-oversight 命令启动        │
     └──────────────────┬──────────────────────┘
                        │ 监控、验收、反馈
                        ▼
@@ -78,6 +80,10 @@ source ~/.bashrc
 
 # 4. (可选) 安装 at 命令用于自调度
 sudo apt install at && sudo systemctl enable --now atd
+
+# 5. (推荐) 配置 Agent 上下文
+# 让 fire 启动的 Agent 自动了解 tmux 工具函数
+# 详见 docs/01-quick-start.md 第 2.5 节
 ```
 
 ---
@@ -96,9 +102,10 @@ sudo apt install at && sudo systemctl enable --now atd
 
 | 命令 | 说明 |
 |------|------|
-| `fire <project>` | 快速启动项目 |
+| `fire <project>` | 快速启动项目（显示项目类型） |
 | `tsc <target> <msg>` | 发送消息到 Claude |
 | `check-agent [session]` | 查看 Agent 状态 |
+| `monitor-agent [session]` | 实时监控 Agent |
 | `monitor-snapshot [session]` | 生成监控快照 |
 | `find-window <name>` | 按名称查找窗口 |
 | `stop-project [session]` | 停止项目 |
@@ -117,6 +124,7 @@ sudo apt install at && sudo systemctl enable --now atd
 | 命令 | 说明 |
 |------|------|
 | `schedule-checkin <分钟> <备注>` | 调度下次检查 |
+| `read-next-note [target]` | 读取下次检查备注 |
 | `start-auto-commit [session] [分钟]` | 启动自动 Git 提交 |
 | `stop-auto-commit [session]` | 停止自动提交 |
 
@@ -138,7 +146,7 @@ sudo apt install at && sudo systemctl enable --now atd
 
 ### 通信协议
 
-> 详见 [最佳实践](docs/best-practices.md#2-通信规范)
+> 详见 [最佳实践](docs/05-best-practices.md#2-通信规范)
 
 | 命令 | 说明 |
 |------|------|
@@ -157,7 +165,6 @@ sudo apt install at && sudo systemctl enable --now atd
 |------|------|
 | `init-agent-logs` | 初始化日志目录 |
 | `capture-agent-log <session>` | 捕获对话 |
-| `save-agent-log [session]` | 保存当前会话日志 |
 | `view-agent-logs [session]` | 查看今日日志 |
 | `clean-agent-logs [days]` | 清理旧日志 (默认7天) |
 | `end-agent <session> <window>` | 结束并保存 |
@@ -169,14 +176,16 @@ sudo apt install at && sudo systemctl enable --now atd
 
 ### Claude Code 斜杠命令
 
+> 斜杠命令位于 `.claude/commands/tmuxAI/` 目录
+
 | 命令 | 说明 |
 |------|------|
-| `/pm-oversight <项目> SPEC: <文件>` | 启动 PM 监督 |
-| `/role-developer <任务>` | Developer 角色 |
-| `/role-qa <任务>` | QA 角色 |
-| `/role-devops <任务>` | DevOps 角色 |
-| `/role-reviewer <内容>` | Reviewer 角色 |
-| `/deploy-team <项目> [规模]` | 部署团队 |
+| `/tmuxAI:pm-oversight <项目> SPEC: <文件>` | 启动 PM 监督 |
+| `/tmuxAI:role-developer <任务>` | Developer 角色 |
+| `/tmuxAI:role-qa <任务>` | QA 角色 |
+| `/tmuxAI:role-devops <任务>` | DevOps 角色 |
+| `/tmuxAI:role-reviewer <内容>` | Reviewer 角色 |
+| `/tmuxAI:deploy-team <项目> [规模]` | 部署团队 |
 
 ---
 
@@ -237,7 +246,7 @@ send-to-agent frontend:Claude "等待 backend API"
 broadcast "准备发布，请提交代码"
 ```
 
-> 完整指南见 [多项目模式手册](docs/multi-project-mode.md)
+> 完整指南见 [多项目模式手册](docs/02-multi-project-mode.md)
 
 ### 5. PM 监督模式
 
@@ -247,10 +256,10 @@ fire my-project
 
 # 终端 2: 启动 PM
 claude
-/pm-oversight my-project SPEC: ~/Coding/my-project/project_spec.md
+/tmuxAI:pm-oversight my-project SPEC: ~/Coding/my-project/project_spec.md
 ```
 
-> 完整指南见 [PM 监督模式手册](docs/pm-oversight-mode.md)
+> 完整指南见 [PM 监督模式手册](docs/03-pm-oversight-mode.md)
 
 ---
 
@@ -290,6 +299,7 @@ export DEFAULT_DELAY="1"             # 消息延迟(秒)
 
 | 版本 | 更新内容 |
 |------|----------|
+| v2.4 | Agent 上下文配置、项目类型检测、等待 Claude 启动、合并脚本版本 |
 | v2.3 | 环境自检机制 (check-deps)、依赖守卫、安装建议 |
 | v2.2 | Agent 角色模板、通信协议、日志系统 |
 | v2.1 | PM 监督模式 |
