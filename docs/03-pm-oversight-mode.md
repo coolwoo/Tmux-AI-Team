@@ -462,6 +462,69 @@ tsc my-project:Claude "提醒：请专注于当前任务，避免偏离 Spec 定
 
 ---
 
+## 重新进入会话
+
+PM 监督模式涉及两个 Agent，它们的重新进入方式不同。
+
+### Engineer Agent (tmux 会话)
+
+Engineer Agent 在 tmux 中运行，关闭终端后会话仍在后台继续工作。
+
+```bash
+# 查看活跃会话
+list-agents
+
+# 重新进入 Engineer 会话
+goto my-project
+
+# 或使用 tmux 原生命令
+tmux attach -t my-project
+```
+
+### PM Agent (Claude Code)
+
+PM Agent 在 Claude Code 中运行。关闭终端后 PM 会话会丢失，需要重新启动。
+
+**重新启动 PM**:
+
+```bash
+# 1. 打开新终端
+# 2. 启动 Claude Code
+claude
+
+# 3. 重新执行 PM 监督命令
+/pm-oversight my-project SPEC: ~/Coding/my-project/project_spec.md
+```
+
+**注意**: PM 重启后会重新阅读 Spec，从头开始监督流程。如果 Engineer 已经完成部分工作，PM 会在检查时发现并跳过已完成的部分。
+
+### 脱离会话 (不关闭)
+
+如果只是暂时离开，可以脱离而不关闭：
+
+```bash
+# 在 tmux 会话内
+Ctrl+b d          # 脱离 Engineer 会话
+
+# PM 终端保持打开，或使用 screen/tmux 包装
+```
+
+### 长时间运行建议
+
+如果需要长时间无人值守运行：
+
+```bash
+# 方法 1: 在 tmux 中运行 PM
+tmux new -s pm-session
+claude
+/pm-oversight my-project SPEC: ...
+# Ctrl+b d 脱离
+
+# 方法 2: 使用 nohup (不推荐，无法交互)
+```
+
+---
+
 ## 故障排除
 
 ### 问题: PM 无法发送消息

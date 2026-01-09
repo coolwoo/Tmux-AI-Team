@@ -425,6 +425,55 @@ send-to-agent backend:Claude "frontend 被阻塞，请优先完成 /api/users �
 
 ---
 
+## 重新进入会话
+
+关闭终端后，tmux 会话仍在后台运行。Agent 会继续工作，你可以随时重新连接。
+
+### 查看活跃会话
+
+```bash
+# 列出所有 Agent 会话
+list-agents
+
+# 或使用 tmux 原生命令
+tmux ls
+```
+
+### 重新进入单个项目
+
+```bash
+# 方法 1: 使用 goto (推荐)
+goto frontend
+
+# 方法 2: 使用 fire (如果会话存在会自动 attach)
+fire frontend
+
+# 方法 3: 使用 tmux 原生命令
+tmux attach -t frontend
+```
+
+### 在会话间切换
+
+如果你已在一个 tmux 会话内：
+
+```bash
+# 在 tmux 内切换到另一个会话
+Ctrl+b s           # 显示会话列表，用方向键选择
+Ctrl+b )           # 切换到下一个会话
+Ctrl+b (           # 切换到上一个会话
+```
+
+### 脱离会话 (不关闭)
+
+```bash
+# 在 tmux 内，脱离当前会话返回普通终端
+Ctrl+b d
+```
+
+脱离后 Agent 继续在后台运行，你可以稍后用 `goto` 重新进入。
+
+---
+
 ## 故障排除
 
 ### 问题: Agent 无响应
