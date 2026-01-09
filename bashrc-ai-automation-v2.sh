@@ -297,9 +297,13 @@ _resolve_project_path() {
 
 # 检测项目类型
 # 用法: _detect_project_type <项目路径>
+# 策略: 优先配置文件检测，备选源文件检测
 _detect_project_type() {
     local path="$1"
 
+    # === 阶段1: 配置文件检测 (优先) ===
+
+    # Node.js 生态
     [ -f "$path/package.json" ] && {
         grep -q '"next"' "$path/package.json" 2>/dev/null && echo "nextjs" && return
         grep -q '"vite"' "$path/package.json" 2>/dev/null && echo "vite" && return
@@ -307,13 +311,52 @@ _detect_project_type() {
         grep -q '"react"' "$path/package.json" 2>/dev/null && echo "react" && return
         echo "node" && return
     }
+
+    # Python
     [ -f "$path/manage.py" ] && echo "django" && return
-    [ -f "$path/requirements.txt" ] || [ -f "$path/pyproject.toml" ] && echo "python" && return
+    [ -f "$path/requirements.txt" ] || [ -f "$path/pyproject.toml" ] || [ -f "$path/setup.py" ] && echo "python" && return
+
+    # Java - Spring Boot 优先检测
+    [ -f "$path/pom.xml" ] && {
+        grep -q 'spring-boot' "$path/pom.xml" 2>/dev/null && echo "spring-boot" && return
+        echo "java-maven" && return
+    }
+    [ -f "$path/build.gradle" ] && {
+        grep -q 'spring-boot' "$path/build.gradle" 2>/dev/null && echo "spring-boot" && return
+        echo "java-gradle" && return
+    }
+    [ -f "$path/build.gradle.kts" ] && {
+        grep -q 'spring-boot' "$path/build.gradle.kts" 2>/dev/null && echo "spring-boot" && return
+        echo "kotlin" && return
+    }
+
+    # 其他语言 - 配置文件
     [ -f "$path/go.mod" ] && echo "go" && return
     [ -f "$path/Cargo.toml" ] && echo "rust" && return
     [ -f "$path/Gemfile" ] && echo "ruby" && return
-    [ -f "$path/pom.xml" ] && echo "java-maven" && return
-    [ -f "$path/build.gradle" ] && echo "java-gradle" && return
+    [ -f "$path/composer.json" ] && echo "php" && return
+    [ -f "$path/pubspec.yaml" ] && echo "flutter" && return
+    [ -f "$path/Package.swift" ] && echo "swift" && return
+    [ -f "$path/mix.exs" ] && echo "elixir" && return
+    [ -f "$path/build.sbt" ] && echo "scala" && return
+
+    # .NET
+    ls "$path"/*.csproj &>/dev/null && echo "dotnet" && return
+    ls "$path"/*.sln &>/dev/null && echo "dotnet" && return
+
+    # === 阶段2: 源文件检测 (备选) ===
+
+    # 检测主要源文件类型
+    ls "$path"/*.py &>/dev/null && echo "python" && return
+    ls "$path"/*.go &>/dev/null && echo "go" && return
+    ls "$path"/*.rs &>/dev/null && echo "rust" && return
+    ls "$path"/*.rb &>/dev/null && echo "ruby" && return
+    ls "$path"/*.php &>/dev/null && echo "php" && return
+    ls "$path"/*.swift &>/dev/null && echo "swift" && return
+    ls "$path"/*.ex "$path"/*.exs &>/dev/null && echo "elixir" && return
+    ls "$path"/*.scala &>/dev/null && echo "scala" && return
+    ls "$path"/*.sh &>/dev/null && echo "bash" && return
+
     echo "unknown"
 }
 

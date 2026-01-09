@@ -41,7 +41,7 @@
 
 ---
 
-### #003 改进项目类型检测函数
+### #003 改进项目类型检测函数 ✅ 已完成
 
 **背景**：`_detect_project_type()` 函数目前只检测配置文件，对于没有标准配置文件的简单项目会返回 `unknown`。
 
@@ -49,34 +49,18 @@
 - `idiom-game`（Python 项目）因没有 `requirements.txt` 被识别为 `unknown`
 - 简单脚本项目（如本项目 Bash 脚本）无法被识别
 
-**当前检测逻辑**：
-```
-package.json → node/nextjs/vite/vue/react
-requirements.txt / pyproject.toml → python
-go.mod → go
-Cargo.toml → rust
-...
-```
+**采用方案**：C - 两者结合（优先配置文件，备选源文件）
 
-**可选改进**：
-- A. 添加源文件检测作为备选（检测 *.py、*.go、*.rs 等文件存在）
-- B. 添加更多配置文件检测（如 setup.py、Makefile、*.sh 等）
-- C. 两者结合：优先配置文件，备选源文件
+**实现**：
+- 阶段1: 配置文件检测（优先）
+  - 新增: Spring Boot, .NET, PHP, Flutter, Kotlin, Swift, Elixir, Scala
+  - 改进: Spring Boot 从 Java 项目中区分出来
+- 阶段2: 源文件检测（备选）
+  - 检测 *.py, *.go, *.rs, *.rb, *.php, *.swift, *.ex, *.scala, *.sh
 
-**待添加的项目类型**：
+**测试结果**：
+- idiom-game → python ✓
+- idiom-web → python ✓
+- Tmux-AI-Team → bash ✓
 
-| 类型 | 检测方式 |
-|------|----------|
-| Spring Boot | pom.xml 含 `spring-boot` 或 build.gradle 含 `spring-boot` |
-| .NET/C# | *.csproj 或 *.sln |
-| PHP | composer.json |
-| Flutter/Dart | pubspec.yaml |
-| Kotlin | build.gradle.kts |
-| Swift | Package.swift |
-| Elixir | mix.exs |
-| Scala | build.sbt |
-| Bash/Shell | *.sh 文件为主（无配置文件时备选） |
-
-**优先级**：低（功能性改进，不影响核心流程）
-
-**状态**：待决定
+**状态**：已完成
