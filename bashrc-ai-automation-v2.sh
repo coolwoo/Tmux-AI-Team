@@ -929,6 +929,156 @@ clean-agent-logs() {
 }
 
 #===============================================================================
+# 系统健康检查
+#===============================================================================
+
+# 检查整个 AI 自动化系统的运行状态
+# 用法: system-health [--save]
+system-health() {
+    local save_log=false
+    [ "$1" = "--save" ] && save_log=true
+
+    local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+    local report=""
+    local total_sessions=0
+    local healthy_sessions=0
+    local warning_sessions=0
+    local error_sessions=0
+
+    report+="╔══════════════════════════════════════════════════════════════╗\n"
+    report+="║           AI 自动化系统健康检查报告                          ║\n"
+    report+="║           $timestamp                          ║\n"
+    report+="╠══════════════════════════════════════════════════════════════╣\n"
+
+    # 检查是否有活跃会话
+    local sessions=$(tmux list-sessions -F "#{session_name}" 2>/dev/null)
+    if [ -z "$sessions" ]; then
+        report+="║ 状态: 无活跃的 Agent 会话                                    ║\n"
+        report+="╚══════════════════════════════════════════════════════════════╝\n"
+        echo -e "$report"
+        return 0
+    fi
+
+    # 遍历每个会话
+    for session in $sessions; do
+        # 跳过非项目会话（没有 Claude 窗口的）
+        tmux has-session -t "$session:Claude" 2>/dev/null || continue
+
+        total_sessions=$((total_sessions + 1))
+        local session_status="✓"
+        local session_issues=""
+
+        report+="\n║ ▶ 会话: $session\n"
+        report+="║ ────────────────────────────────────────\n"
+
+        # 1. 检查 Claude 窗口活跃度
+        local claude_output=$(tmux capture-pane -t "$session:Claude" -p 2>/dev/null | tail -5)
+        if [ -z "$claude_output" ]; then
+            session_issues+="    ⚠ Claude 窗口无输出\n"
+        else
+            # 检查是否有错误提示
+            if echo "$claude_output" | grep -qiE "(error|failed|exception)"; then
+                session_issues+="    ⚠ Claude 窗口可能有错误\n"
+            fi
+        fi
+
+        # 2. 检查 Server 窗口错误
+        local server_errors=$(tmux capture-pane -t "$session:Server" -p 2>/dev/null | grep -iE "(error|failed|exception|traceback)" | tail -3)
+        if [ -n "$server_errors" ]; then
+            session_issues+="    ✗ Server 有错误:\n"
+            echo "$server_errors" | while read -r err; do
+                session_issues+="      | $err\n"
+            done
+            session_status="✗"
+        fi
+
+        # 3. 检查自动提交状态
+        local pid_file="/tmp/auto_commit_${session}.pid"
+        if [ -f "$pid_file" ]; then
+            if kill -0 "$(cat "$pid_file")" 2>/dev/null; then
+                report+="║   自动提交: 运行中 (PID: $(cat "$pid_file"))\n"
+            else
+                session_issues+="    ⚠ 自动提交进程已停止\n"
+            fi
+        else
+            report+="║   自动提交: 未启用\n"
+        fi
+
+        # 4. 检查调度任务
+        local note_file="/tmp/next_check_note_${session}_Claude.txt"
+        if [ -f "$note_file" ]; then
+            report+="║   下次检查: $(cat "$note_file")\n"
+        fi
+
+        # 汇总会话状态
+        if [ -n "$session_issues" ]; then
+            if [ "$session_status" = "✗" ]; then
+                error_sessions=$((error_sessions + 1))
+                report+="║   状态: ✗ 有错误\n"
+            else
+                warning_sessions=$((warning_sessions + 1))
+                report+="║   状态: ⚠ 有警告\n"
+            fi
+            report+="║   问题:\n"
+            report+="$session_issues"
+        else
+            healthy_sessions=$((healthy_sessions + 1))
+            report+="║   状态: ✓ 正常\n"
+        fi
+    done
+
+    # 汇总报告
+    report+="\n╠══════════════════════════════════════════════════════════════╣\n"
+    report+="║ 汇总: 共 $total_sessions 个会话                                            \n"
+    report+="║   ✓ 正常: $healthy_sessions | ⚠ 警告: $warning_sessions | ✗ 错误: $error_sessions                      \n"
+    report+="╚══════════════════════════════════════════════════════════════╝\n"
+
+    echo -e "$report"
+
+    # 保存到日志
+    if [ "$save_log" = true ]; then
+        mkdir -p "$AGENT_LOG_DIR"
+        local log_file="$AGENT_LOG_DIR/health_$(date +%Y%m%d_%H%M%S).log"
+        echo -e "$report" > "$log_file"
+        echo "日志已保存: $log_file"
+    fi
+
+    # 返回状态码
+    [ $error_sessions -gt 0 ] && return 2
+    [ $warning_sessions -gt 0 ] && return 1
+    return 0
+}
+
+# 持续监控系统健康 (后台运行)
+# 用法: watch-health [间隔分钟] [会话名]
+watch-health() {
+    local interval="${1:-15}"
+    local target_session="$2"
+
+    echo "启动健康监控 (每 ${interval} 分钟检查)"
+    echo "按 Ctrl+C 停止"
+    echo ""
+
+    while true; do
+        clear
+        system-health --save
+
+        # 如果指定了会话，检查后发送状态
+        if [ -n "$target_session" ]; then
+            local status="正常"
+            system-health >/dev/null 2>&1
+            case $? in
+                1) status="有警告" ;;
+                2) status="有错误" ;;
+            esac
+            tsc "$target_session" "[健康监控] 系统状态: $status ($(date '+%H:%M'))"
+        fi
+
+        sleep $((interval * 60))
+    done
+}
+
+#===============================================================================
 # 停止和清理
 #===============================================================================
 

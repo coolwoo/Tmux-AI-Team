@@ -120,6 +120,15 @@ sudo apt install at && sudo systemctl enable --now atd
 | `start-auto-commit [session] [分钟]` | 启动自动 Git 提交 |
 | `stop-auto-commit [session]` | 停止自动提交 |
 
+### 系统健康监控
+
+| 命令 | 说明 |
+|------|------|
+| `system-health` | 检查所有会话的健康状态 |
+| `system-health --save` | 检查并保存日志 |
+| `watch-health [分钟]` | 持续监控 (默认每15分钟) |
+| `watch-health 10 my-project` | 监控并向指定会话报告状态 |
+
 ### 项目规范
 
 | 命令 | 说明 |

@@ -120,6 +120,12 @@ check-agent my-project
 
 # 生成监控快照
 monitor-snapshot my-project
+
+# 系统健康检查 (检查所有会话的运行状态)
+system-health
+
+# 持续健康监控 (每15分钟检查一次)
+watch-health 15
 ```
 
 ### 发送消息
@@ -192,6 +198,8 @@ claude
 | `broadcast <msg>` | 广播消息 |
 | `schedule-checkin <分钟> <备注>` | 调度下次检查 |
 | `start-auto-commit [session] [分钟]` | 启动自动提交 |
+| `system-health` | 检查所有会话的健康状态 |
+| `watch-health [分钟]` | 持续监控系统健康 |
 
 ## 通信协议
 
