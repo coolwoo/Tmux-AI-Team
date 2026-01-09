@@ -101,8 +101,13 @@ v2.0 版本借鉴了 [Tmux-Orchestrator](https://github.com/Jedward23/Tmux-Orche
 ### 方法 1: 仅 Bash 函数（推荐）
 
 ```bash
-# 追加到 .bashrc
-cat bashrc-ai-automation-v2.sh >> ~/.bashrc
+# 复制到用户目录
+cp bashrc-ai-automation-v2.sh ~/.ai-automation.sh
+
+# 在 ~/.bashrc 中添加 source 语句（仅需执行一次）
+echo '[ -f ~/.ai-automation.sh ] && source ~/.ai-automation.sh' >> ~/.bashrc
+
+# 生效
 source ~/.bashrc
 ```
 
@@ -117,7 +122,8 @@ cp project-start-v2.sh ~/bin/
 chmod +x ~/bin/project-start-v2.sh
 
 # 安装 bash 函数
-cat bashrc-ai-automation-v2.sh >> ~/.bashrc
+cp bashrc-ai-automation-v2.sh ~/.ai-automation.sh
+echo '[ -f ~/.ai-automation.sh ] && source ~/.ai-automation.sh' >> ~/.bashrc
 
 # 确保 bin 在 PATH 中
 echo 'export PATH="$HOME/bin:$PATH"' >> ~/.bashrc

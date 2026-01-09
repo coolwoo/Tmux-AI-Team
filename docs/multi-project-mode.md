@@ -55,7 +55,8 @@
 
 ```bash
 # 安装
-cat bashrc-ai-automation-v2.sh >> ~/.bashrc
+cp bashrc-ai-automation-v2.sh ~/.ai-automation.sh
+echo '[ -f ~/.ai-automation.sh ] && source ~/.ai-automation.sh' >> ~/.bashrc
 source ~/.bashrc
 ```
 

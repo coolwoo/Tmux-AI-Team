@@ -45,7 +45,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 | 文件 | 用途 |
 |------|------|
-| `bashrc-ai-automation-v2.sh` | Bash 函数，添加到 ~/.bashrc 中使用，提供核心命令 |
+| `bashrc-ai-automation-v2.sh` | Bash 函数，复制到 ~/.ai-automation.sh 并 source，提供核心命令 |
 | `project-start-v2.sh` | 独立脚本版本，功能更完整 |
 | `AI-Project-Automation-Manual-v2.md` | 用户操作手册（总览） |
 | `docs/multi-project-mode.md` | 多项目模式 (Orchestrator) 详细使用手册 |

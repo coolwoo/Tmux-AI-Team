@@ -1,14 +1,16 @@
 #===============================================================================
 # AI 项目自动化 v2.0 - Tmux + Claude Code 集成
-# 
+#
 # 借鉴 Tmux-Orchestrator 最佳实践:
 # - 自调度 (Self-scheduling)
 # - 项目规范文件
 # - 定时 Git 提交
 # - Agent 间通信
 #
-# 将此内容添加到 ~/.bashrc 末尾
-# 添加后执行: source ~/.bashrc
+# 安装方法:
+#   cp bashrc-ai-automation-v2.sh ~/.ai-automation.sh
+#   echo '[ -f ~/.ai-automation.sh ] && source ~/.ai-automation.sh' >> ~/.bashrc
+#   source ~/.bashrc
 #===============================================================================
 
 # === 配置 ===
