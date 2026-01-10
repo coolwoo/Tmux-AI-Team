@@ -1437,6 +1437,36 @@ pm-init-slots() {
 
 # 查看所有槽位状态
 # 用法: pm-status
+# 检测槽位窗口是否有活动（用于检测过时的 working 状态）
+# 返回: 0=活跃, 1=空闲/无活动
+_is_slot_active() {
+    local session="$1"
+    local slot="$2"
+
+    # 获取窗口最后 5 行内容（去掉空行）
+    local last_lines=$(tmux capture-pane -t "$session:$slot" -p 2>/dev/null | grep -v "^[[:space:]]*$" | tail -5)
+
+    # 如果内容为空，认为是空闲的
+    [[ -z "$last_lines" ]] && return 1
+
+    # Claude Code 空闲状态特征：
+    # 1. 最后一行是版本信息 "current: x.x.x · latest: x.x.x"
+    # 2. 或者最后几行只有提示符、版本信息、状态栏等
+    local last_line=$(echo "$last_lines" | tail -1)
+
+    # 如果最后一行是版本信息，认为是空闲的
+    if echo "$last_line" | grep -qE "current:.*latest:"; then
+        return 1
+    fi
+
+    # 如果最后一行是空的提示符行（只有 tokens 信息），认为是空闲的
+    if echo "$last_line" | grep -qE "^[[:space:]]*[0-9]+ tokens[[:space:]]*$"; then
+        return 1
+    fi
+
+    return 0
+}
+
 pm-status() {
     local session=$(tmux display-message -p '#{session_name}' 2>/dev/null)
 
@@ -1461,6 +1491,14 @@ pm-status() {
         status="${status:-idle}"
         task="${task:--}"
 
+        # 检测过时的 working 状态
+        local stale_marker=""
+        if [[ "$status" == "working" ]]; then
+            if ! _is_slot_active "$session" "$slot"; then
+                stale_marker="?"
+            fi
+        fi
+
         local icon="⚪"
         case "$status" in
             working) icon="🟢" ;;
@@ -1469,10 +1507,27 @@ pm-status() {
             blocked) icon="🟡" ;;
         esac
 
-        printf "║ %-8s ║ %s %-6s ║ %-36s ║\n" "$slot" "$icon" "$status" "${task:0:36}"
+        printf "║ %-8s ║ %s %-6s ║ %-36s ║\n" "$slot" "$icon" "${status}${stale_marker}" "${task:0:36}"
     done
 
     echo "╚══════════╩══════════╩══════════════════════════════════════╝"
+
+    # 如果有过时状态，显示提示
+    local has_stale=false
+    for slot in dev-1 dev-2 qa; do
+        local var_prefix="${slot^^}"
+        var_prefix="${var_prefix//-/_}"
+        local status=$(tmux show-environment -t "$session" "${var_prefix}_STATUS" 2>/dev/null | cut -d= -f2)
+        if [[ "$status" == "working" ]] && ! _is_slot_active "$session" "$slot"; then
+            has_stale=true
+            break
+        fi
+    done
+
+    if $has_stale; then
+        echo ""
+        echo "提示: 标记 '?' 表示状态可能过时，使用 pm-mark <slot> idle 重置"
+    fi
 }
 
 # 分配任务到槽位
@@ -1512,12 +1567,11 @@ pm-assign() {
     # 启动 Claude
     echo "启动 Claude 到 $slot..."
     tmux send-keys -t "$session:$slot" "$CLAUDE_CMD" Enter
-    sleep 3
+    _wait_for_claude "$session:$slot" 30
 
     # 加载角色
     echo "加载角色 $role..."
     tsc "$session:$slot" "/$role"
-    sleep 2
 
     # 发送任务
     echo "发送任务..."
