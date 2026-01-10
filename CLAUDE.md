@@ -75,6 +75,7 @@ bash -n bashrc-ai-automation-v2.sh
 | 文件 | 用途 |
 |------|------|
 | `bashrc-ai-automation-v2.sh` | **核心** - 所有 Bash 函数定义 |
+| `.claude/TMUX_AI.md` | Agent 上下文模板（fire 启动时复制到目标项目） |
 | `.claude/commands/tmuxAI/*.md` | Claude Code 斜杠命令模板 |
 | `docs/01-quick-start.md` | **新用户从这里开始** |
 | `docs/02-*.md ~ 05-*.md` | 详细使用手册（按序号阅读） |

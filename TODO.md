@@ -25,11 +25,12 @@
 
 **问题**：Agent 不知道如何使用 `tsc`、`schedule-checkin` 等函数。
 
-**采用方案**：A - 用户级 CLAUDE.md（精简版）
+**采用方案**：项目级 TMUX_AI.md（fire 启动时自动复制）
 
 **实现**：
-- 创建 `~/.claude/CLAUDE.md` 全局配置文件
-- 精简版设计：只包含核心函数（tsc、schedule-checkin、send-status）
+- 模板文件：`.claude/TMUX_AI.md`（随项目发布）
+- `fire` 启动时自动复制到目标项目 `.claude/TMUX_AI.md`
+- 使用独立文件名，与用户已有的 `.claude/CLAUDE.md` 互不干扰
 - 复杂场景通过斜杠命令（`.claude/commands/tmuxAI/*.md`）按需加载
 
 **包含内容**：

@@ -81,8 +81,8 @@ source ~/.bashrc
 # 4. (可选) 安装 at 命令用于自调度
 sudo apt install at && sudo systemctl enable --now atd
 
-# 5. (推荐) 配置 Agent 上下文
-# 让 fire 启动的 Agent 自动了解 tmux 工具函数
+# 5. Agent 上下文（自动配置）
+# fire 启动时自动复制 .claude/TMUX_AI.md 到目标项目
 # 详见 docs/01-quick-start.md 第 2.5 节
 ```
 

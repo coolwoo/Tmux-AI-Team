@@ -80,77 +80,27 @@ check-deps
 ===== 检查完成 =====
 ```
 
-### 2.5 配置 Agent 上下文（推荐）
+### 2.5 Agent 上下文（自动配置）
 
-通过 `fire` 启动的 Claude Agent 默认不知道 tmux 工具函数的存在。配置用户级 `CLAUDE.md` 可以让所有 Agent 自动获得这些工具的上下文。
+`fire` 启动时会自动将 Tmux-AI 工具函数的上下文复制到目标项目：
 
-```bash
-# 创建用户级 CLAUDE.md
-cat > ~/.claude/CLAUDE.md << 'EOF'
-# Tmux-AI 工具包
-
-你正在 tmux 环境中工作。以下是可用的 Bash 工具函数。
-
-## 窗口布局
-
-| 窗口 | 用途 |
-|------|------|
-| `Claude` (0) | 你所在的窗口 |
-| `Shell` (1) | 命令行操作 |
-| `Server` (2) | 开发服务器 |
-
-## 核心函数
-
-### 发送消息
-```bash
-tsc <target> <message>
 ```
-向其他窗口或 Agent 发送消息。target 格式: `session:window`
-
-示例:
-```bash
-tsc myproject:Shell "npm run dev"      # 在 Shell 窗口执行命令
-tsc frontend:Claude "API 已就绪"        # 通知另一个 Agent
-```
-
-### 自调度
-```bash
-schedule-checkin <分钟> <备注>
-```
-安排下次唤醒时间。系统会在指定时间后发送提醒消息。
-
-示例:
-```bash
-schedule-checkin 30 "检查测试结果"
-```
-
-### 状态汇报 (多 Agent 场景)
-```bash
-send-status <target> <agent-name> <completed> <current> [blocked]
-```
-
-示例:
-```bash
-send-status pm:Claude Developer "完成登录接口" "实现注册功能"
-```
-
-## 工作流程
-
-1. 收到任务后开始工作
-2. 需要在其他窗口执行命令时用 `tsc`
-3. 阶段性工作完成后用 `schedule-checkin` 安排下次检查
-4. 多 Agent 场景中用 `send-status` 汇报进度
-
-## 更多功能
-
-完整函数列表运行 `check-deps` 或查看项目文档。
-EOF
+fire my-project
+    │
+    └── 自动复制: .claude/TMUX_AI.md → ~/Coding/my-project/.claude/TMUX_AI.md
 ```
 
 **工作原理**：
-- Claude Code 启动时会自动读取 `~/.claude/CLAUDE.md`
-- Agent 因此了解 tmux 环境和可用的工具函数
-- 这是精简版，只包含最常用的核心函数
+- `fire` 启动时检查目标项目是否已有 `.claude/TMUX_AI.md`
+- 如果没有，自动从 `$TMUX_AI_TEAM_DIR/.claude/TMUX_AI.md` 复制
+- Claude Code 启动时会自动加载 `.claude/` 目录下所有 `.md` 文件
+- Agent 因此了解 tmux 环境和可用的工具函数（`tsc`、`schedule-checkin` 等）
+- 与用户已有的 `.claude/CLAUDE.md` 互不干扰
+
+**模板内容**：
+- 窗口布局说明（Claude, Shell, Server）
+- 核心函数：`tsc`、`schedule-checkin`、`send-status`
+- 基本工作流程指引
 - 复杂场景（如 PM 监督）通过斜杠命令按需加载更多上下文
 
 ---
