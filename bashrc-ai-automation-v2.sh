@@ -1497,7 +1497,7 @@ pm-add-slot() {
     echo "✓ 添加槽位: $slot"
 }
 
-# 删除槽位
+# 删除槽位（同时关闭窗口）
 # 用法: pm-remove-slot <name> [--force]
 pm-remove-slot() {
     local slot="$1"
@@ -1507,7 +1507,7 @@ pm-remove-slot() {
     [ -z "$slot" ] && {
         echo "用法: pm-remove-slot <name> [--force]"
         echo "示例: pm-remove-slot dev-2"
-        echo "      pm-remove-slot dev-2 --force  # 同时关闭窗口"
+        echo "      pm-remove-slot dev-2 --force  # 强制删除工作中的槽位"
         return 1
     }
 
@@ -1542,10 +1542,8 @@ pm-remove-slot() {
     tmux set-environment -t "$session" -u "${var_prefix}_TASK" 2>/dev/null
     tmux set-environment -t "$session" -u "${var_prefix}_STARTED" 2>/dev/null
 
-    # 如果 --force，关闭窗口
-    if [[ "$force" == "--force" ]]; then
-        tmux kill-window -t "$session:$slot" 2>/dev/null && echo "✓ 窗口已关闭: $slot"
-    fi
+    # 关闭窗口
+    tmux kill-window -t "$session:$slot" 2>/dev/null
 
     _pm_log "REMOVE_SLOT" "$slot" "删除槽位"
     echo "✓ 删除槽位: $slot"
