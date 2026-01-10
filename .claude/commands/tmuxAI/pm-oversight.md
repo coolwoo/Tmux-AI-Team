@@ -155,6 +155,29 @@ echo "验收功能X，检查服务器状态" > /tmp/next_check_note.txt
 
 ---
 
+## 再次激活 PM
+
+任务完成后，可通过以下方式再次激活执行新任务：
+
+**方式 1: 直接对话（推荐）**
+```
+请继续监督 <项目名> 项目，执行新任务：<任务描述>
+```
+
+**方式 2: 重新执行斜杠命令**
+```
+/tmuxAI:pm-oversight <项目名> SPEC: <规范文件>
+```
+
+**方式 3: 使用 PM 槽位命令**
+```
+/tmuxAI:pm-status          # 查看状态
+/tmuxAI:pm-assign dev-1 role-developer "新任务"
+/tmuxAI:pm-check dev-1     # 检查进度
+```
+
+---
+
 ## 开始工作
 
 1. 解析参数，确认任务范围和规范文件

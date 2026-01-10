@@ -774,3 +774,78 @@ PM 操作日志保存在 `$AGENT_LOG_DIR/pm_<session>_<date>.log`：
 ```
 
 使用 `/tmuxAI:pm-history` 或 `pm-history` 查看日志。
+
+---
+
+## 常见问题 (FAQ)
+
+### Q: 任务完成后如何再次激活 PM 监督？
+
+当 `/tmuxAI:pm-oversight` 已启动并完成任务后，有多种方式再次激活执行新任务：
+
+**方式 1: 直接对话（推荐）**
+
+PM Agent 仍在当前会话中，直接发送新指令即可：
+
+```
+请继续监督 my-project 项目，执行新任务：<任务描述>
+```
+
+或简单地使用 PM 命令：
+```
+检查 dev-1 进度
+分配新任务到 dev-2
+```
+
+**方式 2: 重新执行斜杠命令**
+
+```bash
+/tmuxAI:pm-oversight my-project SPEC: ~/Coding/my-project/project_spec.md
+```
+
+这会重新加载完整的 PM 上下文和指令。适用于：
+- 规范文件有更新
+- 需要完全重置 PM 状态
+- PM 上下文丢失
+
+**方式 3: 使用 PM 槽位命令**
+
+直接使用已加载的 PM 斜杠命令管理槽位：
+
+```bash
+/tmuxAI:pm-status                              # 查看当前状态
+/tmuxAI:pm-assign dev-1 role-developer "新任务" # 分配新任务
+/tmuxAI:pm-check dev-1                          # 检查进度
+/tmuxAI:pm-broadcast "开始新一轮开发"            # 广播通知
+```
+
+**方式 4: 安排定时检查**
+
+```bash
+schedule-checkin 30 "检查所有槽位进度"
+```
+
+### Q: 如何判断使用哪种方式？
+
+| 场景 | 推荐方式 |
+|------|----------|
+| 继续当前项目的后续任务 | 方式 1 或 3 |
+| 规范文件已更新 | 方式 2 |
+| 切换到不同项目 | 方式 2 |
+| 长时间无人值守后继续 | 方式 2 |
+| 快速分配单个任务 | 方式 3 |
+
+### Q: PM 会话关闭后如何恢复？
+
+如果 Claude Code 终端关闭，PM 会话会丢失，需要重新启动：
+
+```bash
+# 1. 打开新终端
+# 2. 启动 Claude Code
+claude
+
+# 3. 重新执行 PM 监督命令
+/tmuxAI:pm-oversight my-project SPEC: ~/Coding/my-project/project_spec.md
+```
+
+**注意**: PM 重启后会重新阅读 Spec，从头开始监督流程。已完成的槽位状态（通过 tmux 环境变量保存）会被保留，PM 可以通过 `/tmuxAI:pm-status` 查看。
