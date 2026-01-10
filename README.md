@@ -183,6 +183,17 @@ claude
 /tmuxAI:pm-oversight my-project SPEC: ~/Coding/my-project/project_spec.md
 ```
 
+**v3.4 新增**: PM 槽位管理，支持同时管理 3 个工作槽位：
+
+```bash
+# PM Agent 执行
+/tmuxAI:pm-init                                    # 初始化槽位
+/tmuxAI:pm-assign dev-1 role-developer "实现API"   # 分配任务
+/tmuxAI:pm-assign dev-2 role-developer "实现UI"    # 并行开发
+/tmuxAI:pm-status                                  # 查看状态面板
+/tmuxAI:pm-check dev-1                             # 智能检测完成状态
+```
+
 详见 [PM 监督模式手册](docs/03-pm-oversight-mode.md)
 
 ## 核心命令
@@ -200,6 +211,18 @@ claude
 | `start-auto-commit [session] [分钟]` | 启动自动提交 |
 | `system-health` | 检查所有会话的健康状态 |
 | `watch-health [分钟]` | 持续监控系统健康 |
+
+### PM 槽位管理 (v3.4)
+
+| 命令 | 说明 |
+|------|------|
+| `pm-init-slots` | 初始化 3 个槽位 (dev-1, dev-2, qa) |
+| `pm-assign <slot> <role> <task>` | 分配任务到槽位 |
+| `pm-status` | 查看槽位状态面板 |
+| `pm-check <slot>` | 智能检测槽位状态 |
+| `pm-mark <slot> <status>` | 手动标记状态 |
+| `pm-broadcast <msg>` | 广播消息到工作中的槽位 |
+| `pm-history` | 查看 PM 操作历史 |
 
 ## 通信协议
 
@@ -286,17 +309,26 @@ Tmux-AI-Team/
 ├── CLAUDE.md                      # Claude Code 项目指南
 ├── bashrc-ai-automation-v2.sh     # Bash 函数 (核心)
 ├── AI-Project-Automation-Manual-v2.md  # 用户手册
-├── .claude/commands/              # Claude Code 斜杠命令
+├── .claude/commands/tmuxAI/       # Claude Code 斜杠命令
 │   ├── pm-oversight.md            # PM 监督模式
+│   ├── pm-init.md                 # PM 初始化槽位 (v3.4)
+│   ├── pm-assign.md               # PM 分配任务 (v3.4)
+│   ├── pm-status.md               # PM 状态面板 (v3.4)
+│   ├── pm-check.md                # PM 智能检测 (v3.4)
+│   ├── pm-mark.md                 # PM 标记状态 (v3.4)
+│   ├── pm-broadcast.md            # PM 广播消息 (v3.4)
+│   ├── pm-history.md              # PM 操作历史 (v3.4)
 │   ├── deploy-team.md             # 团队部署
 │   ├── role-developer.md          # Developer 角色
 │   ├── role-qa.md                 # QA 角色
 │   ├── role-devops.md             # DevOps 角色
 │   └── role-reviewer.md           # Reviewer 角色
 └── docs/                          # 详细文档
-    ├── multi-project-mode.md      # 多项目模式手册
-    ├── pm-oversight-mode.md       # PM 监督模式手册
-    └── best-practices.md          # 最佳实践指南
+    ├── 01-quick-start.md          # 快速开始
+    ├── 02-multi-project-mode.md   # 多项目模式手册
+    ├── 03-pm-oversight-mode.md    # PM 监督模式手册
+    ├── 04-agent-roles.md          # Agent 角色
+    └── 05-best-practices.md       # 最佳实践指南
 ```
 
 ## License

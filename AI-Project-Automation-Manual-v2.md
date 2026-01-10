@@ -1,4 +1,4 @@
-# AI 项目自动化启动器 v2.4 - 操作手册
+# AI 项目自动化启动器 v2.5 - 操作手册
 
 本手册是快速参考指南。详细使用说明请参阅专题文档：
 
@@ -174,9 +174,35 @@ sudo apt install at && sudo systemctl enable --now atd
 - `<session>_<date>.log` - 会话日志
 - `<session>_<window>_*.log` - 窗口快照
 
+### PM 槽位管理 (v3.4)
+
+| 命令 | 说明 |
+|------|------|
+| `pm-init-slots` | 初始化 3 个槽位 (dev-1, dev-2, qa) |
+| `pm-assign <slot> <role> <task>` | 分配任务到槽位 |
+| `pm-status` | 查看槽位状态面板 |
+| `pm-check <slot>` | 智能检测槽位状态 (解析 [STATUS:*]) |
+| `pm-mark <slot> <status>` | 手动标记状态 |
+| `pm-broadcast <msg>` | 广播消息到工作中的槽位 |
+| `pm-history` | 查看 PM 操作历史 |
+
 ### Claude Code 斜杠命令
 
 > 斜杠命令位于 `.claude/commands/tmuxAI/` 目录
+
+**PM 槽位命令 (v3.4)**:
+
+| 命令 | 说明 |
+|------|------|
+| `/tmuxAI:pm-init` | 初始化槽位 |
+| `/tmuxAI:pm-assign <slot> <role> <task>` | 分配任务 |
+| `/tmuxAI:pm-status` | 状态面板 |
+| `/tmuxAI:pm-check <slot>` | 智能检测 |
+| `/tmuxAI:pm-mark <slot> <status>` | 标记状态 |
+| `/tmuxAI:pm-broadcast <msg>` | 广播消息 |
+| `/tmuxAI:pm-history` | 操作历史 |
+
+**原有命令**:
 
 | 命令 | 说明 |
 |------|------|
@@ -299,6 +325,7 @@ export DEFAULT_DELAY="1"             # 消息延迟(秒)
 
 | 版本 | 更新内容 |
 |------|----------|
+| v2.5 | PM 槽位管理 v3.4 (pm-init/assign/status/check/mark/broadcast/history)、状态标记协议 |
 | v2.4 | Agent 上下文配置、项目类型检测、等待 Claude 启动、合并脚本版本 |
 | v2.3 | 环境自检机制 (check-deps)、依赖守卫、安装建议 |
 | v2.2 | Agent 角色模板、通信协议、日志系统 |

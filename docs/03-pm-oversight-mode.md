@@ -2,7 +2,9 @@
 
 ## 概述
 
-PM 监督模式让一个 Claude Agent 作为项目经理 (PM)，自动监督另一个 Engineer Agent 的开发工作。PM Agent 会定期检查进度、监控错误、验收功能，实现无人值守的自动化开发。
+PM 监督模式让一个 Claude Agent 作为项目经理 (PM)，自动监督多个 Engineer Agent 的开发工作。PM Agent 会定期检查进度、监控错误、验收功能，实现无人值守的自动化开发。
+
+**v3.4 新增**: PM 槽位管理功能，支持同时管理 3 个工作槽位 (dev-1, dev-2, qa)，通过 `[STATUS:*]` 标记实现智能状态检测。
 
 ## 架构图
 
@@ -614,3 +616,161 @@ tsc auth-project:Claude "所有功能验收通过！
 
 请进行最后的代码清理和提交。"
 ```
+
+---
+
+## PM 槽位管理 (v3.4)
+
+v3.4 新增了 PM 槽位管理功能，让 PM Agent 可以同时管理多个子 Agent。
+
+### 架构
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                      PM Agent (Claude 窗口)                      │
+│                                                                 │
+│  执行斜杠命令:                                                   │
+│  /tmuxAI:pm-init  pm-assign  pm-status  pm-check  pm-mark       │
+└─────────────────────────────┬───────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                 tmux session: my-project                        │
+├─────────┬─────────┬─────────┬─────────┬─────────────────────────┤
+│ Claude  │ Shell   │ dev-1   │ dev-2   │ qa                      │
+│ (PM)    │         │ (Agent) │ (Agent) │ (Agent)                 │
+└─────────┴─────────┴─────────┴─────────┴─────────────────────────┘
+```
+
+### 快速开始
+
+```bash
+# 1. PM 初始化槽位
+/tmuxAI:pm-init
+
+# 2. 分配任务
+/tmuxAI:pm-assign dev-1 role-developer "实现用户登录 API"
+/tmuxAI:pm-assign dev-2 role-developer "实现登录页面 UI"
+
+# 3. 查看状态
+/tmuxAI:pm-status
+
+# 4. 检测任务完成
+/tmuxAI:pm-check dev-1
+
+# 5. 分配测试
+/tmuxAI:pm-assign qa role-qa "测试登录功能"
+
+# 6. 查看历史
+/tmuxAI:pm-history
+```
+
+### PM 槽位命令
+
+| 命令 | 说明 |
+|------|------|
+| `/tmuxAI:pm-init` | 初始化 3 个槽位 (dev-1, dev-2, qa) |
+| `/tmuxAI:pm-assign <slot> <role> <task>` | 分配任务到槽位 |
+| `/tmuxAI:pm-status` | 查看状态面板 |
+| `/tmuxAI:pm-check <slot>` | 智能检测槽位状态 |
+| `/tmuxAI:pm-mark <slot> <status>` | 手动标记状态 |
+| `/tmuxAI:pm-broadcast <message>` | 广播消息 |
+| `/tmuxAI:pm-history` | 查看操作历史 |
+
+### 状态标记协议
+
+子 Agent 通过输出格式化标记汇报状态，PM 使用 `/tmuxAI:pm-check` 自动解析：
+
+| 标记 | 用途 | PM 行为 |
+|------|------|---------|
+| `[STATUS:DONE] 说明` | 任务完成 | 自动标记为 done |
+| `[STATUS:ERROR] 说明` | 遇到错误 | 自动标记为 error |
+| `[STATUS:BLOCKED] 说明` | 被阻塞 | 告警，不改状态 |
+| `[STATUS:PROGRESS] 说明` | 进度更新 | 仅显示 |
+
+**子 Agent 示例输出：**
+
+```
+正在实现用户登录 API...
+已完成数据库模型设计...
+已完成路由配置...
+已完成单元测试...
+
+[STATUS:DONE] 用户登录 API 已完成，包含注册、登录、JWT 验证
+```
+
+### 状态面板
+
+执行 `/tmuxAI:pm-status` 显示：
+
+```
+╔════════════════════════════════════════════════════════════╗
+║              PM 状态面板  14:30:25                         ║
+╠══════════╦══════════╦══════════════════════════════════════╣
+║ 槽位     ║ 状态     ║ 任务                                 ║
+╠══════════╬══════════╬══════════════════════════════════════╣
+║ dev-1    ║ 🟢 working ║ 实现用户登录 API                   ║
+║ dev-2    ║ ✅ done    ║ -                                   ║
+║ qa       ║ ⚪ idle    ║ -                                   ║
+╚══════════╩══════════╩══════════════════════════════════════╝
+```
+
+状态图标：
+- ⚪ idle - 空闲
+- 🟢 working - 工作中
+- ✅ done - 已完成
+- 🔴 error - 出错
+- 🟡 blocked - 被阻塞
+
+### PM 工作流程 (v3.4)
+
+```
+PM Agent 工作流程：
+
+1. /tmuxAI:pm-init                                    # 初始化槽位
+   ↓
+2. /tmuxAI:pm-assign dev-1 role-developer "任务A"     # 分配任务
+   /tmuxAI:pm-assign dev-2 role-developer "任务B"
+   ↓
+3. /tmuxAI:pm-status                                  # 检查状态面板
+   ↓
+4. (等待一段时间)
+   ↓
+5. /tmuxAI:pm-check dev-1                             # 智能检测状态
+   /tmuxAI:pm-check dev-2                             # 自动解析 [STATUS:*]
+   ↓
+6. /tmuxAI:pm-assign qa role-qa "测试"                # 分配测试
+   ↓
+7. /tmuxAI:pm-check qa                                # 检测测试结果
+   ↓
+8. /tmuxAI:pm-broadcast "准备提交代码"                # 广播通知
+   ↓
+9. /tmuxAI:pm-history                                 # 查看完整记录
+```
+
+### Bash 函数 (终端使用)
+
+除了斜杠命令，也可以在终端直接使用 Bash 函数：
+
+```bash
+pm-init-slots                           # 初始化槽位
+pm-assign dev-1 role-developer "任务"   # 分配任务
+pm-status                               # 查看状态
+pm-check dev-1                          # 检测状态
+pm-mark dev-1 done                      # 手动标记
+pm-broadcast "消息"                     # 广播
+pm-history                              # 查看历史
+```
+
+### 日志系统
+
+PM 操作日志保存在 `$AGENT_LOG_DIR/pm_<session>_<date>.log`：
+
+```
+[2026-01-10 14:00:00] [INIT] [-] 初始化槽位: dev-1, dev-2, qa
+[2026-01-10 14:01:23] [ASSIGN] [dev-1] 实现用户登录 API (角色: role-developer)
+[2026-01-10 14:30:00] [CHECK] [dev-1] detected: done - 登录 API 已完成
+[2026-01-10 14:30:00] [MARK] [dev-1] done (耗时: 28分钟)
+```
+
+使用 `/tmuxAI:pm-history` 或 `pm-history` 查看日志。
