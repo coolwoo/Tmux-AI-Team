@@ -17,6 +17,7 @@
 export CODING_BASE="${CODING_BASE:-$HOME/Coding}"
 export CLAUDE_CMD="${CLAUDE_CMD:-claude}"
 export DEFAULT_DELAY="${DEFAULT_DELAY:-1}"
+export TMUX_AI_TEAM_DIR="${TMUX_AI_TEAM_DIR:-$HOME/Coding/Tmux-AI-Team}"
 
 #===============================================================================
 # 环境自检
@@ -453,6 +454,22 @@ fire() {
     tmux new-session -d -s "$session" -c "$project_path" -n "Claude"
     tmux new-window -t "$session" -n "Shell" -c "$project_path"
     tmux new-window -t "$session" -n "Server" -c "$project_path"
+
+    # 复制 Agent 上下文模板到目标项目
+    local tpl_file="$TMUX_AI_TEAM_DIR/docs/template/CLAUDE_TPL.md"
+    local target_claude_dir="$project_path/.claude"
+    local target_claude_md="$target_claude_dir/CLAUDE.md"
+    if [ -f "$tpl_file" ]; then
+        mkdir -p "$target_claude_dir"
+        if [ ! -f "$target_claude_md" ]; then
+            cp "$tpl_file" "$target_claude_md"
+            echo "✓ 已复制 Agent 上下文模板"
+        else
+            echo "⚠ 目标项目已有 .claude/CLAUDE.md，跳过复制"
+        fi
+    else
+        echo "⚠ 模板文件不存在: $tpl_file"
+    fi
 
     # 启动 Claude
     tmux send-keys -t "$session:Claude" "$CLAUDE_CMD" Enter
