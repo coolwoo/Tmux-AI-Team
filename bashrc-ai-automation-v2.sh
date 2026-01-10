@@ -1408,7 +1408,22 @@ _pm_log() {
     fi
 }
 
-# 初始化 3 个 Agent 工作槽位
+# 获取槽位列表（从环境变量读取）
+# 返回: 逗号分隔的槽位列表，默认 "dev-1"
+_pm_get_slots() {
+    local session=$(tmux display-message -p '#{session_name}' 2>/dev/null)
+    local slots=$(tmux show-environment -t "$session" "PM_SLOTS" 2>/dev/null | cut -d= -f2)
+    echo "${slots:-dev-1}"
+}
+
+# 设置槽位列表
+_pm_set_slots() {
+    local session="$1"
+    local slots="$2"
+    tmux set-environment -t "$session" "PM_SLOTS" "$slots"
+}
+
+# 初始化 Agent 工作槽位
 # 用法: pm-init-slots
 pm-init-slots() {
     local session=$(tmux display-message -p '#{session_name}' 2>/dev/null)
@@ -1418,21 +1433,150 @@ pm-init-slots() {
         return 1
     }
 
-    for slot in dev-1 dev-2 qa; do
-        if ! tmux list-windows -t "$session" -F '#{window_name}' | grep -q "^${slot}$"; then
-            tmux new-window -t "$session" -n "$slot" -c "$(pwd)"
-            local var_prefix="${slot^^}"
-            var_prefix="${var_prefix//-/_}"
-            tmux set-environment -t "$session" "${var_prefix}_STATUS" "idle"
-            echo "✓ 创建槽位: $slot"
-        else
-            echo "⚠ 槽位已存在: $slot"
-        fi
-    done
+    # 默认只创建 dev-1
+    local default_slot="dev-1"
 
-    _pm_log "INIT" "-" "初始化槽位: dev-1, dev-2, qa"
+    if ! tmux list-windows -t "$session" -F '#{window_name}' | grep -q "^${default_slot}$"; then
+        tmux new-window -t "$session" -n "$default_slot" -c "$(pwd)"
+        tmux set-environment -t "$session" "DEV_1_STATUS" "idle"
+        echo "✓ 创建槽位: $default_slot"
+    else
+        echo "⚠ 槽位已存在: $default_slot"
+    fi
+
+    # 初始化槽位列表
+    _pm_set_slots "$session" "$default_slot"
+
+    _pm_log "INIT" "-" "初始化槽位: $default_slot"
     echo ""
     echo "✓ PM 槽位初始化完成"
+}
+
+# 添加新槽位
+# 用法: pm-add-slot <name>
+pm-add-slot() {
+    local slot="$1"
+    local session=$(tmux display-message -p '#{session_name}' 2>/dev/null)
+
+    [ -z "$slot" ] && {
+        echo "用法: pm-add-slot <name>"
+        echo "示例: pm-add-slot dev-2"
+        return 1
+    }
+
+    [ -z "$session" ] && {
+        echo "错误: 未在 tmux 会话中"
+        return 1
+    }
+
+    # 检查槽位是否已存在
+    local current_slots=$(_pm_get_slots)
+    if echo ",$current_slots," | grep -q ",$slot,"; then
+        echo "⚠ 槽位已存在: $slot"
+        return 1
+    fi
+
+    # 创建窗口
+    if ! tmux list-windows -t "$session" -F '#{window_name}' | grep -q "^${slot}$"; then
+        tmux new-window -t "$session" -n "$slot" -c "$(pwd)"
+    fi
+
+    # 初始化状态
+    local var_prefix="${slot^^}"
+    var_prefix="${var_prefix//-/_}"
+    tmux set-environment -t "$session" "${var_prefix}_STATUS" "idle"
+
+    # 更新槽位列表
+    if [ -z "$current_slots" ]; then
+        _pm_set_slots "$session" "$slot"
+    else
+        _pm_set_slots "$session" "$current_slots,$slot"
+    fi
+
+    _pm_log "ADD_SLOT" "$slot" "添加槽位"
+    echo "✓ 添加槽位: $slot"
+}
+
+# 删除槽位
+# 用法: pm-remove-slot <name> [--force]
+pm-remove-slot() {
+    local slot="$1"
+    local force="$2"
+    local session=$(tmux display-message -p '#{session_name}' 2>/dev/null)
+
+    [ -z "$slot" ] && {
+        echo "用法: pm-remove-slot <name> [--force]"
+        echo "示例: pm-remove-slot dev-2"
+        echo "      pm-remove-slot dev-2 --force  # 同时关闭窗口"
+        return 1
+    }
+
+    [ -z "$session" ] && {
+        echo "错误: 未在 tmux 会话中"
+        return 1
+    }
+
+    # 检查槽位是否存在
+    local current_slots=$(_pm_get_slots)
+    if ! echo ",$current_slots," | grep -q ",$slot,"; then
+        echo "⚠ 槽位不存在: $slot"
+        return 1
+    fi
+
+    # 检查是否正在工作
+    local var_prefix="${slot^^}"
+    var_prefix="${var_prefix//-/_}"
+    local status=$(tmux show-environment -t "$session" "${var_prefix}_STATUS" 2>/dev/null | cut -d= -f2)
+
+    if [[ "$status" == "working" && "$force" != "--force" ]]; then
+        echo "⚠ 槽位 $slot 正在工作中，使用 --force 强制删除"
+        return 1
+    fi
+
+    # 从列表中移除
+    local new_slots=$(echo "$current_slots" | tr ',' '\n' | grep -v "^${slot}$" | tr '\n' ',' | sed 's/,$//')
+    _pm_set_slots "$session" "$new_slots"
+
+    # 清除状态环境变量
+    tmux set-environment -t "$session" -u "${var_prefix}_STATUS" 2>/dev/null
+    tmux set-environment -t "$session" -u "${var_prefix}_TASK" 2>/dev/null
+    tmux set-environment -t "$session" -u "${var_prefix}_STARTED" 2>/dev/null
+
+    # 如果 --force，关闭窗口
+    if [[ "$force" == "--force" ]]; then
+        tmux kill-window -t "$session:$slot" 2>/dev/null && echo "✓ 窗口已关闭: $slot"
+    fi
+
+    _pm_log "REMOVE_SLOT" "$slot" "删除槽位"
+    echo "✓ 删除槽位: $slot"
+}
+
+# 列出所有槽位
+# 用法: pm-list-slots
+pm-list-slots() {
+    local session=$(tmux display-message -p '#{session_name}' 2>/dev/null)
+
+    [ -z "$session" ] && {
+        echo "错误: 未在 tmux 会话中"
+        return 1
+    }
+
+    local slots=$(_pm_get_slots)
+
+    if [ -z "$slots" ]; then
+        echo "暂无槽位，使用 pm-init-slots 或 pm-add-slot 创建"
+        return 0
+    fi
+
+    echo "当前槽位列表:"
+    echo "$slots" | tr ',' '\n' | while read slot; do
+        [ -z "$slot" ] && continue
+        local var_prefix="${slot^^}"
+        var_prefix="${var_prefix//-/_}"
+        local status=$(tmux show-environment -t "$session" "${var_prefix}_STATUS" 2>/dev/null | cut -d= -f2)
+        status="${status:-idle}"
+        echo "  - $slot ($status)"
+    done
 }
 
 # 查看所有槽位状态
@@ -1475,13 +1619,23 @@ pm-status() {
         return 1
     }
 
+    local slots=$(_pm_get_slots)
+
+    if [ -z "$slots" ]; then
+        echo "暂无槽位，使用 pm-init-slots 或 pm-add-slot 创建"
+        return 0
+    fi
+
     echo "╔════════════════════════════════════════════════════════════╗"
     echo "║              PM 状态面板  $(date +%H:%M:%S)                      ║"
     echo "╠══════════╦══════════╦══════════════════════════════════════╣"
     echo "║ 槽位     ║ 状态     ║ 任务                                 ║"
     echo "╠══════════╬══════════╬══════════════════════════════════════╣"
 
-    for slot in dev-1 dev-2 qa; do
+    # 使用 for 循环遍历动态槽位列表
+    local IFS=','
+    for slot in $slots; do
+        [ -z "$slot" ] && continue
         local var_prefix="${slot^^}"
         var_prefix="${var_prefix//-/_}"
 
@@ -1509,12 +1663,15 @@ pm-status() {
 
         printf "║ %-8s ║ %s %-6s ║ %-36s ║\n" "$slot" "$icon" "${status}${stale_marker}" "${task:0:36}"
     done
+    unset IFS
 
     echo "╚══════════╩══════════╩══════════════════════════════════════╝"
 
     # 如果有过时状态，显示提示
     local has_stale=false
-    for slot in dev-1 dev-2 qa; do
+    local IFS=','
+    for slot in $slots; do
+        [ -z "$slot" ] && continue
         local var_prefix="${slot^^}"
         var_prefix="${var_prefix//-/_}"
         local status=$(tmux show-environment -t "$session" "${var_prefix}_STATUS" 2>/dev/null | cut -d= -f2)
@@ -1523,6 +1680,7 @@ pm-status() {
             break
         fi
     done
+    unset IFS
 
     if $has_stale; then
         echo ""
@@ -1708,9 +1866,18 @@ pm-broadcast() {
         return 1
     }
 
+    local slots=$(_pm_get_slots)
+
+    if [ -z "$slots" ]; then
+        echo "暂无槽位，使用 pm-init-slots 或 pm-add-slot 创建"
+        return 0
+    fi
+
     local sent_count=0
 
-    for slot in dev-1 dev-2 qa; do
+    local IFS=','
+    for slot in $slots; do
+        [ -z "$slot" ] && continue
         local var_prefix="${slot^^}"
         var_prefix="${var_prefix//-/_}"
 
@@ -1722,6 +1889,7 @@ pm-broadcast() {
             sent_count=$((sent_count + 1))
         fi
     done
+    unset IFS
 
     if [[ $sent_count -eq 0 ]]; then
         echo "⚠ 没有工作中的槽位"
