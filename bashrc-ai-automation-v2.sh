@@ -478,7 +478,7 @@ fire() {
 schedule-checkin() {
     local minutes="$1"
     local note="$2"
-    local target="${3:-$(tmux display-message -p '#{session_name}:#{window_index}' 2>/dev/null)}"
+    local target="${3:-$(tmux display-message -p '#{session_name}:#{window_name}' 2>/dev/null)}"
     
     [ -z "$minutes" ] || [ -z "$note" ] && {
         echo "用法: schedule-checkin <分钟> <备注> [目标]"
@@ -509,7 +509,7 @@ schedule-checkin() {
 
 # 读取下次检查备注
 read-next-note() {
-    local target="${1:-$(tmux display-message -p '#{session_name}:#{window_index}' 2>/dev/null)}"
+    local target="${1:-$(tmux display-message -p '#{session_name}:#{window_name}' 2>/dev/null)}"
     local note_file="/tmp/next_check_note_${target//[:]/_}.txt"
     [ -f "$note_file" ] && cat "$note_file" || echo "无备注"
 }

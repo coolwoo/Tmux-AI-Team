@@ -187,9 +187,11 @@ fire my-project
 | 快捷键 | 作用 |
 |--------|------|
 | `Ctrl+b d` | 脱离会话（Agent 继续运行） |
-| `Ctrl+b 0/1/2` | 切换到窗口 0/1/2 |
+| `Ctrl+b 1/2/3` | 切换到窗口（编号取决于 tmux `base-index` 配置） |
 | `Ctrl+b n` | 下一个窗口 |
 | `Ctrl+b p` | 上一个窗口 |
+
+> **注意**: 窗口编号取决于 tmux 配置。脚本使用窗口名称（Claude, Shell, Server）引用窗口，不受 `base-index` 影响。
 
 ---
 
