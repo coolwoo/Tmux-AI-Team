@@ -403,11 +403,27 @@ tsc() {
 
 # 快速启动项目
 # 支持: 项目名(模糊搜索)、绝对路径、~/路径、./相对路径
+# 选项: --auto 跳过确认直接开始工作
 fire() {
     # 检查基础依赖
     _ai_require_deps tmux claude || return 1
 
-    local project_input="$1"
+    local auto_start=false
+    local project_input=""
+
+    # 解析参数
+    while [ $# -gt 0 ]; do
+        case "$1" in
+            --auto)
+                auto_start=true
+                shift
+                ;;
+            *)
+                project_input="$1"
+                shift
+                ;;
+        esac
+    done
 
     # 无参数时列出可用项目
     [ -z "$project_input" ] && {
@@ -471,6 +487,22 @@ fire() {
         echo "⚠ 模板文件不存在: $tpl_file"
     fi
 
+    # 复制斜杠命令目录到目标项目
+    local src_cmd_dir="$TMUX_AI_TEAM_DIR/.claude/commands/tmuxAI"
+    local target_cmd_dir="$target_claude_dir/commands/tmuxAI"
+    if [ -d "$src_cmd_dir" ]; then
+        if [ ! -d "$target_cmd_dir" ]; then
+            mkdir -p "$target_cmd_dir"
+            cp -r "$src_cmd_dir"/* "$target_cmd_dir/" 2>/dev/null
+            local cmd_count=$(ls -1 "$target_cmd_dir"/*.md 2>/dev/null | wc -l)
+            echo "✓ 已复制斜杠命令 ($cmd_count 个: pm-oversight, deploy-team 等)"
+        else
+            echo "⚠ 目标项目已有斜杠命令目录，跳过复制"
+        fi
+    else
+        echo "⚠ 斜杠命令目录不存在: $src_cmd_dir"
+    fi
+
     # 启动 Claude
     tmux send-keys -t "$session:Claude" "$CLAUDE_CMD" Enter
     _wait_for_claude "$session:Claude" 30
@@ -479,10 +511,51 @@ fire() {
     local spec_note=""
     [ -f "$project_path/project_spec.md" ] && spec_note="请先阅读 project_spec.md。"
 
-    # 发送简报
-    tsc "$session:Claude" "你负责 $project_name 项目 ($project_type)。$spec_note 请: 1) 分析项目 2) 启动 dev server (Server 窗口) 3) 检查 issues/TODO 4) 开始工作。Git 规则: 每 30 分钟提交一次。"
+    # 构建简报消息
+    local briefing="你负责 $project_name 项目 ($project_type)。$spec_note 请: 1) 分析项目 2) 启动 dev server (Server 窗口) 3) 检查 issues/TODO 4) 开始工作。Git 规则: 每 30 分钟提交一次。"
 
-    echo "✓ 项目启动完成!"
+    if [ "$auto_start" = true ]; then
+        # --auto 模式：直接发送简报开始工作
+        tsc "$session:Claude" "$briefing"
+        echo "✓ 项目启动完成! (自动模式)"
+    else
+        # 缓冲模式：等待用户确认
+        echo ""
+        echo "╔═══════════════════════════════════════════════════════════════╗"
+        echo "║  Claude 已就绪，等待确认后开始工作                           ║"
+        echo "╠═══════════════════════════════════════════════════════════════╣"
+        echo "║  会话: $session"
+        echo "║  项目: $project_name ($project_type)"
+        [ -n "$spec_note" ] && echo "║  规范: project_spec.md"
+        echo "╠═══════════════════════════════════════════════════════════════╣"
+        echo "║  可用命令 (在 Claude 窗口使用):                               ║"
+        echo "║    /tmuxAI:pm-oversight   - PM 监督模式                       ║"
+        echo "║    /tmuxAI:deploy-team    - 部署多 Agent 团队                 ║"
+        echo "║    /tmuxAI:role-developer - 开发者角色                        ║"
+        echo "╚═══════════════════════════════════════════════════════════════╝"
+        echo ""
+        echo "操作选项:"
+        echo "  [Enter] 发送默认简报开始工作"
+        echo "  [s]     跳过简报，手动输入任务"
+        echo "  [q]     退出 (保持会话运行)"
+        echo ""
+        read -r -p "选择 [Enter/s/q]: " choice
+
+        case "$choice" in
+            s|S)
+                echo "✓ 会话已就绪，请在 Claude 窗口手动输入任务"
+                ;;
+            q|Q)
+                echo "✓ 会话保持运行，使用 'goto $session' 重新连接"
+                return 0
+                ;;
+            *)
+                tsc "$session:Claude" "$briefing"
+                echo "✓ 简报已发送!"
+                ;;
+        esac
+    fi
+
     tmux attach -t "$session"
 }
 
@@ -1318,7 +1391,7 @@ alias tp='tmux list-panes'
 #   check-deps                  检查依赖并显示安装建议
 #
 # 基础:
-#   fire <project>              快速启动项目
+#   fire <project> [--auto]     快速启动项目 (--auto 跳过确认)
 #   tsc <target> <msg>          发送消息到 Claude Code
 #   check-agent [session]       检查状态
 #   stop-project [session]      停止项目
