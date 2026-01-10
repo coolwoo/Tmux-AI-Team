@@ -1499,6 +1499,10 @@ pm-add-slot() {
 
 # 删除槽位（同时关闭窗口）
 # 用法: pm-remove-slot <name> [--force]
+# 行为:
+#   - 空闲或过时状态: 直接关闭
+#   - 真正工作中: 拒绝关闭，提示使用 --force
+#   - --force: 先通知 Agent，等待 3 秒后关闭
 pm-remove-slot() {
     local slot="$1"
     local force="$2"
@@ -1507,7 +1511,7 @@ pm-remove-slot() {
     [ -z "$slot" ] && {
         echo "用法: pm-remove-slot <name> [--force]"
         echo "示例: pm-remove-slot dev-2"
-        echo "      pm-remove-slot dev-2 --force  # 强制删除工作中的槽位"
+        echo "      pm-remove-slot dev-2 --force  # 通知 Agent 后关闭"
         return 1
     }
 
@@ -1528,9 +1532,30 @@ pm-remove-slot() {
     var_prefix="${var_prefix//-/_}"
     local status=$(tmux show-environment -t "$session" "${var_prefix}_STATUS" 2>/dev/null | cut -d= -f2)
 
-    if [[ "$status" == "working" && "$force" != "--force" ]]; then
-        echo "⚠ 槽位 $slot 正在工作中，使用 --force 强制删除"
-        return 1
+    # 判断是否真正在工作（状态为 working 且窗口有活动）
+    local is_actually_working=false
+    if [[ "$status" == "working" ]]; then
+        if _is_slot_active "$session" "$slot"; then
+            is_actually_working=true
+        else
+            echo "→ 检测到 $slot 状态过时（窗口无活动），将直接关闭"
+        fi
+    fi
+
+    # 如果真正在工作，需要特殊处理
+    if $is_actually_working; then
+        if [[ "$force" != "--force" ]]; then
+            echo "⚠ 槽位 $slot 正在工作中"
+            echo "  → 使用 --force 先通知 Agent 再关闭"
+            echo "  → 或手动执行 pm-mark $slot idle 后再删除"
+            return 1
+        fi
+
+        # --force: 先通知 Agent，等待后关闭
+        echo "→ 向 $slot 发送关闭通知..."
+        tsc "$session:$slot" "[PM 通知] 窗口即将关闭，请保存工作"
+        echo "→ 等待 3 秒..."
+        sleep 3
     fi
 
     # 从列表中移除
@@ -1591,18 +1616,22 @@ _is_slot_active() {
     # 如果内容为空，认为是空闲的
     [[ -z "$last_lines" ]] && return 1
 
-    # Claude Code 空闲状态特征：
-    # 1. 最后一行是版本信息 "current: x.x.x · latest: x.x.x"
-    # 2. 或者最后几行只有提示符、版本信息、状态栏等
     local last_line=$(echo "$last_lines" | tail -1)
 
-    # 如果最后一行是版本信息，认为是空闲的
+    # 空闲状态特征检测：
+
+    # 1. Claude Code 版本信息 "current: x.x.x · latest: x.x.x"
     if echo "$last_line" | grep -qE "current:.*latest:"; then
         return 1
     fi
 
-    # 如果最后一行是空的提示符行（只有 tokens 信息），认为是空闲的
+    # 2. Claude Code tokens 信息
     if echo "$last_line" | grep -qE "^[[:space:]]*[0-9]+ tokens[[:space:]]*$"; then
+        return 1
+    fi
+
+    # 3. Shell 提示符（以 $ 或 # 或 % 结尾，常见的 bash/zsh 提示符）
+    if echo "$last_line" | grep -qE '[\$#%>][[:space:]]*$'; then
         return 1
     fi
 
