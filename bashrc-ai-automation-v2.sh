@@ -456,16 +456,16 @@ fire() {
     tmux new-window -t "$session" -n "Server" -c "$project_path"
 
     # 复制 Agent 上下文模板到目标项目
-    local tpl_file="$TMUX_AI_TEAM_DIR/docs/template/CLAUDE_TPL.md"
+    local tpl_file="$TMUX_AI_TEAM_DIR/docs/template/TMUX_AI_TPL.md"
     local target_claude_dir="$project_path/.claude"
-    local target_claude_md="$target_claude_dir/CLAUDE.md"
+    local target_tmux_ai_md="$target_claude_dir/TMUX_AI.md"
     if [ -f "$tpl_file" ]; then
         mkdir -p "$target_claude_dir"
-        if [ ! -f "$target_claude_md" ]; then
-            cp "$tpl_file" "$target_claude_md"
-            echo "✓ 已复制 Agent 上下文模板"
+        if [ ! -f "$target_tmux_ai_md" ]; then
+            cp "$tpl_file" "$target_tmux_ai_md"
+            echo "✓ 已复制 Agent 上下文模板 (TMUX_AI.md)"
         else
-            echo "⚠ 目标项目已有 .claude/CLAUDE.md，跳过复制"
+            echo "⚠ 目标项目已有 .claude/TMUX_AI.md，跳过复制"
         fi
     else
         echo "⚠ 模板文件不存在: $tpl_file"
