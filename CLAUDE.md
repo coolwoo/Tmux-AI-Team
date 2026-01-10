@@ -1,5 +1,7 @@
 # CLAUDE.md
 
+> 📅 Last updated: 2026-01-10 13:39:28
+
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## 项目概述
@@ -12,6 +14,143 @@ AI 项目自动化工具包 - 将 tmux 与 Claude Code 集成，实现自主多 
 - 多 Agent 通信：通过 tmux 消息传递实现跨会话通信
 - PM 监督模式：AI 项目经理自动监督 Engineer Agent
 - 环境自检：自动检测依赖并提供安装建议
+
+## 项目结构图
+
+```mermaid
+graph TB
+    subgraph Root["📦 Tmux-AI-Team"]
+        CORE["bashrc-ai-automation-v2.sh<br/>🔧 核心 Bash 函数库"]
+        README["README.md"]
+        CLAUDE["CLAUDE.md"]
+    end
+
+    subgraph Docs["📚 docs/"]
+        D01["01-quick-start.md"]
+        D02["02-multi-project-mode.md"]
+        D03["03-pm-oversight-mode.md"]
+        D04["04-agent-roles.md"]
+        D05["05-best-practices.md"]
+    end
+
+    subgraph Claude[".claude/"]
+        TMUX_AI["TMUX_AI.md<br/>📋 Agent 上下文模板"]
+
+        subgraph Commands["commands/"]
+            subgraph TmuxAI["tmuxAI/"]
+                PM["pm-oversight.md"]
+                DEPLOY["deploy-team.md"]
+                ROLES["role-*.md"]
+            end
+            subgraph Other["其他命令组"]
+                SECURITY["security/"]
+                DOC["documentation/"]
+                ZCF["zcf/"]
+            end
+        end
+
+        subgraph Agents["agents/"]
+            AGENT1["专家 Agents"]
+        end
+    end
+
+    Root --> Docs
+    Root --> Claude
+```
+
+## 架构图
+
+### 运行时架构
+
+```mermaid
+flowchart TB
+    subgraph User["👤 用户终端"]
+        BASH["~/.bashrc<br/>source ~/.ai-automation.sh"]
+    end
+
+    subgraph Functions["📦 Bash 函数库"]
+        FIRE["fire()"]
+        TSC["tsc()"]
+        SCHED["schedule-checkin()"]
+        MONITOR["monitor-snapshot()"]
+        COMM["send-status/task/bug()"]
+    end
+
+    subgraph Tmux["🖥️ Tmux 会话"]
+        subgraph Session["会话: project-name"]
+            W1["窗口: Claude<br/>🤖 AI Agent"]
+            W2["窗口: Shell<br/>💻 命令行"]
+            W3["窗口: Server<br/>🌐 开发服务器"]
+        end
+    end
+
+    subgraph External["外部依赖"]
+        CLAUDE_CMD["claude CLI"]
+        AT["at 命令"]
+        GIT["git"]
+    end
+
+    BASH --> Functions
+    FIRE --> Session
+    TSC --> W1
+    W1 --> CLAUDE_CMD
+    SCHED --> AT
+```
+
+### 多 Agent 模式
+
+```mermaid
+flowchart TB
+    subgraph Orchestrator["👤 协调者 (Orchestrator)"]
+        OPS["监控状态<br/>协调依赖<br/>分配任务"]
+    end
+
+    subgraph Agents["Agent 会话池"]
+        subgraph S1["frontend"]
+            A1["🤖 Claude"]
+        end
+        subgraph S2["backend"]
+            A2["🤖 Claude"]
+        end
+        subgraph S3["mobile"]
+            A3["🤖 Claude"]
+        end
+    end
+
+    OPS -->|"tsc/send-to-agent"| A1
+    OPS -->|"tsc/send-to-agent"| A2
+    OPS -->|"tsc/send-to-agent"| A3
+    OPS -->|"broadcast"| Agents
+
+    A1 <-->|"跨项目协调"| A2
+```
+
+### PM 监督模式
+
+```mermaid
+flowchart LR
+    subgraph PM_Session["PM 会话"]
+        PM["🎯 PM Agent<br/>/tmuxAI:pm-oversight"]
+    end
+
+    subgraph Eng_Session["Engineer 会话"]
+        ENG["👷 Engineer Agent<br/>/tmuxAI:role-developer"]
+    end
+
+    PM -->|"任务分配<br/>send-task"| ENG
+    PM -->|"进度查询<br/>monitor-snapshot"| ENG
+    ENG -->|"状态汇报<br/>send-status"| PM
+    ENG -->|"阻塞通知<br/>send-blocked"| PM
+```
+
+## 模块索引
+
+| 模块 | 路径 | 说明 |
+|------|------|------|
+| 核心函数库 | [`bashrc-ai-automation-v2.sh`](bashrc-ai-automation-v2.sh) | 所有 Bash 函数定义 |
+| Agent 上下文 | [`.claude/TMUX_AI.md`](.claude/TMUX_AI.md) | fire 启动时复制到目标项目 |
+| 斜杠命令 | [`.claude/commands/tmuxAI/`](.claude/commands/tmuxAI/) | PM、团队部署、角色命令 |
+| 用户文档 | [`docs/`](docs/) | 快速开始、使用手册、最佳实践 |
 
 ## 开发与测试
 
@@ -30,30 +169,6 @@ bash -c 'source bashrc-ai-automation-v2.sh; fire'  # 列出可用项目
 
 # 语法检查
 bash -n bashrc-ai-automation-v2.sh
-```
-
-## 架构
-
-```
-📌 单项目模式:
-╔═══════════════════════════════════════════════════════════════════╗
-║                  📦 tmux session: your-project                    ║
-╠═══════════════════════╦═══════════════════════╦═══════════════════╣
-║   Window: Claude      ║   Window: Shell       ║   Window: Server  ║
-║   🤖 Claude Agent     ║   💻 Shell            ║   🌐 Server       ║
-╚═══════════════════════╩═══════════════════════╩═══════════════════╝
-(窗口编号取决于 tmux base-index 配置，脚本使用窗口名称引用)
-
-📌 多项目模式 (Orchestrator):
-                👤 你 (Orchestrator)
-                        │
-          ┌─────────────┼─────────────┐
-          ▼             ▼             ▼
-     frontend       backend        mobile
-       Agent         Agent          Agent
-
-📌 PM 监督模式:
-    🎯 PM Agent ──监控/验收/反馈──► 👷 Engineer Agent
 ```
 
 ## 核心概念
@@ -81,6 +196,41 @@ bash -n bashrc-ai-automation-v2.sh
 | `docs/02-*.md ~ 05-*.md` | 详细使用手册（按序号阅读） |
 
 ## 关键函数
+
+### 函数分类概览
+
+```mermaid
+graph LR
+    subgraph Core["核心函数"]
+        fire["fire()"]
+        tsc["tsc()"]
+    end
+
+    subgraph Schedule["自调度"]
+        sched["schedule-checkin()"]
+        note["read-next-note()"]
+    end
+
+    subgraph Monitor["监控"]
+        check["check-agent()"]
+        snap["monitor-snapshot()"]
+        health["system-health()"]
+    end
+
+    subgraph Comm["通信协议"]
+        status["send-status()"]
+        task["send-task()"]
+        bug["send-bug()"]
+        ack["send-ack()"]
+        done["send-done()"]
+        blocked["send-blocked()"]
+    end
+
+    subgraph Git["Git 自动化"]
+        start["start-auto-commit()"]
+        stop["stop-auto-commit()"]
+    end
+```
 
 ### 消息发送 (tsc)
 
@@ -111,6 +261,8 @@ schedule-checkin 30 "检查进度"
 fire my-project
 # → 创建 3 个窗口: Claude, Shell, Server
 # → 在 Claude 窗口启动 claude 命令
+# → 复制 .claude/TMUX_AI.md 到目标项目
+# → 复制斜杠命令到目标项目
 # → 发送初始任务简报
 ```
 
@@ -138,6 +290,8 @@ check-deps
 export CODING_BASE="$HOME/Coding"   # 项目目录
 export CLAUDE_CMD="claude"          # Claude 命令
 export DEFAULT_DELAY="1"            # 消息延迟(秒)
+export TMUX_AI_TEAM_DIR="$HOME/Coding/Tmux-AI-Team"  # 工具包目录
+export AGENT_LOG_DIR="$HOME/.agent-logs"  # 日志目录
 ```
 
 ## 注意事项
@@ -145,3 +299,4 @@ export DEFAULT_DELAY="1"            # 消息延迟(秒)
 - 函数中使用管道的 `while` 循环会创建子shell，变量修改不会影响外部作用域
 - 使用 `for` 循环替代 `while read` 管道可避免此问题
 - tmux 窗口创建时需指定 `-c` 参数确保正确的工作目录
+- `fire` 启动时会自动复制 Agent 上下文和斜杠命令到目标项目
