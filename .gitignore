@@ -3,6 +3,7 @@ prompts/
 
 # Claude Code configuration (local)
 .claude/*
+!.claude/TMUX_AI.md
 !.claude/commands/
 .claude/commands/*
 !.claude/commands/tmuxAI/

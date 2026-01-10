@@ -456,7 +456,7 @@ fire() {
     tmux new-window -t "$session" -n "Server" -c "$project_path"
 
     # 复制 Agent 上下文模板到目标项目
-    local tpl_file="$TMUX_AI_TEAM_DIR/docs/template/TMUX_AI_TPL.md"
+    local tpl_file="$TMUX_AI_TEAM_DIR/.claude/TMUX_AI.md"
     local target_claude_dir="$project_path/.claude"
     local target_tmux_ai_md="$target_claude_dir/TMUX_AI.md"
     if [ -f "$tpl_file" ]; then
