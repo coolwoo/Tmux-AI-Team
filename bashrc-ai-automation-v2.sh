@@ -1384,6 +1384,331 @@ alias tw='tmux list-windows'
 alias tp='tmux list-panes'
 
 #===============================================================================
+# PM 多槽位管理 (PM-Oversight v3.4)
+#===============================================================================
+
+# 内部日志函数
+# 用法: _pm_log <action> <slot> <message> [duration]
+_pm_log() {
+    local action="$1"
+    local slot="$2"
+    local message="$3"
+    local duration="${4:-}"
+
+    local session=$(tmux display-message -p '#{session_name}' 2>/dev/null)
+    local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+    local log_file="$AGENT_LOG_DIR/pm_${session}_$(date +%Y%m%d).log"
+
+    mkdir -p "$AGENT_LOG_DIR"
+
+    if [[ -n "$duration" ]]; then
+        echo "[$timestamp] [$action] [$slot] $message (耗时: ${duration})" >> "$log_file"
+    else
+        echo "[$timestamp] [$action] [$slot] $message" >> "$log_file"
+    fi
+}
+
+# 初始化 3 个 Agent 工作槽位
+# 用法: pm-init-slots
+pm-init-slots() {
+    local session=$(tmux display-message -p '#{session_name}' 2>/dev/null)
+
+    [ -z "$session" ] && {
+        echo "错误: 未在 tmux 会话中"
+        return 1
+    }
+
+    for slot in dev-1 dev-2 qa; do
+        if ! tmux list-windows -t "$session" -F '#{window_name}' | grep -q "^${slot}$"; then
+            tmux new-window -t "$session" -n "$slot" -c "$(pwd)"
+            local var_prefix="${slot^^}"
+            var_prefix="${var_prefix//-/_}"
+            tmux set-environment -t "$session" "${var_prefix}_STATUS" "idle"
+            echo "✓ 创建槽位: $slot"
+        else
+            echo "⚠ 槽位已存在: $slot"
+        fi
+    done
+
+    _pm_log "INIT" "-" "初始化槽位: dev-1, dev-2, qa"
+    echo ""
+    echo "✓ PM 槽位初始化完成"
+}
+
+# 查看所有槽位状态
+# 用法: pm-status
+pm-status() {
+    local session=$(tmux display-message -p '#{session_name}' 2>/dev/null)
+
+    [ -z "$session" ] && {
+        echo "错误: 未在 tmux 会话中"
+        return 1
+    }
+
+    echo "╔════════════════════════════════════════════════════════════╗"
+    echo "║              PM 状态面板  $(date +%H:%M:%S)                      ║"
+    echo "╠══════════╦══════════╦══════════════════════════════════════╣"
+    echo "║ 槽位     ║ 状态     ║ 任务                                 ║"
+    echo "╠══════════╬══════════╬══════════════════════════════════════╣"
+
+    for slot in dev-1 dev-2 qa; do
+        local var_prefix="${slot^^}"
+        var_prefix="${var_prefix//-/_}"
+
+        local status=$(tmux show-environment -t "$session" "${var_prefix}_STATUS" 2>/dev/null | cut -d= -f2)
+        local task=$(tmux show-environment -t "$session" "${var_prefix}_TASK" 2>/dev/null | cut -d= -f2)
+
+        status="${status:-idle}"
+        task="${task:--}"
+
+        local icon="⚪"
+        case "$status" in
+            working) icon="🟢" ;;
+            done)    icon="✅" ;;
+            error)   icon="🔴" ;;
+            blocked) icon="🟡" ;;
+        esac
+
+        printf "║ %-8s ║ %s %-6s ║ %-36s ║\n" "$slot" "$icon" "$status" "${task:0:36}"
+    done
+
+    echo "╚══════════╩══════════╩══════════════════════════════════════╝"
+}
+
+# 分配任务到槽位
+# 用法: pm-assign <slot> <role> <task>
+pm-assign() {
+    local slot="$1"
+    local role="$2"
+    local task="$3"
+    local session=$(tmux display-message -p '#{session_name}' 2>/dev/null)
+
+    [ -z "$slot" ] || [ -z "$role" ] || [ -z "$task" ] && {
+        echo "用法: pm-assign <slot> <role> <task>"
+        echo "示例: pm-assign dev-1 role-developer \"实现用户登录 API\""
+        echo ""
+        echo "槽位: dev-1 | dev-2 | qa"
+        echo "角色: role-developer | role-qa | role-reviewer | role-devops"
+        return 1
+    }
+
+    local var_prefix="${slot^^}"
+    var_prefix="${var_prefix//-/_}"
+
+    # 检查槽位存在
+    tmux list-windows -t "$session" -F '#{window_name}' | grep -q "^${slot}$" || {
+        echo "错误: 槽位 $slot 不存在，先运行 pm-init-slots"
+        return 1
+    }
+
+    # 检查槽位状态
+    local status=$(tmux show-environment -t "$session" "${var_prefix}_STATUS" 2>/dev/null | cut -d= -f2)
+    if [[ "$status" == "working" ]]; then
+        echo "警告: 槽位 $slot 正在工作中，无法分配新任务"
+        echo "如需覆盖，请先执行: pm-mark $slot idle"
+        return 1
+    fi
+
+    # 启动 Claude
+    echo "启动 Claude 到 $slot..."
+    tmux send-keys -t "$session:$slot" "$CLAUDE_CMD" Enter
+    sleep 3
+
+    # 加载角色
+    echo "加载角色 $role..."
+    tsc "$session:$slot" "/$role"
+    sleep 2
+
+    # 发送任务
+    echo "发送任务..."
+    tsc "$session:$slot" "你的任务: $task"
+
+    # 更新状态
+    tmux set-environment -t "$session" "${var_prefix}_STATUS" "working"
+    tmux set-environment -t "$session" "${var_prefix}_TASK" "$task"
+    tmux set-environment -t "$session" "${var_prefix}_STARTED" "$(date +%s)"
+
+    _pm_log "ASSIGN" "$slot" "$task (角色: $role)"
+    echo ""
+    echo "✓ 已分配: $slot ← $task"
+}
+
+# 标记槽位状态
+# 用法: pm-mark <slot> <status>
+pm-mark() {
+    local slot="$1"
+    local new_status="$2"
+    local session=$(tmux display-message -p '#{session_name}' 2>/dev/null)
+
+    [ -z "$slot" ] || [ -z "$new_status" ] && {
+        echo "用法: pm-mark <slot> <status>"
+        echo "示例: pm-mark dev-1 done"
+        echo ""
+        echo "状态: done | error | idle | blocked"
+        return 1
+    }
+
+    local var_prefix="${slot^^}"
+    var_prefix="${var_prefix//-/_}"
+
+    # 检查槽位存在
+    tmux list-windows -t "$session" -F '#{window_name}' | grep -q "^${slot}$" || {
+        echo "错误: 槽位 $slot 不存在"
+        return 1
+    }
+
+    # 计算耗时
+    local started=$(tmux show-environment -t "$session" "${var_prefix}_STARTED" 2>/dev/null | cut -d= -f2)
+    local duration=""
+    if [[ -n "$started" && "$new_status" == "done" ]]; then
+        local elapsed=$(( ($(date +%s) - started) / 60 ))
+        duration="${elapsed}分钟"
+    fi
+
+    tmux set-environment -t "$session" "${var_prefix}_STATUS" "$new_status"
+
+    if [[ "$new_status" == "done" || "$new_status" == "idle" ]]; then
+        tmux set-environment -t "$session" "${var_prefix}_TASK" ""
+        tmux set-environment -t "$session" "${var_prefix}_STARTED" ""
+    fi
+
+    if [[ -n "$duration" ]]; then
+        _pm_log "MARK" "$slot" "$new_status" "$duration"
+        echo "✓ $slot 状态已更新为: $new_status (耗时: $duration)"
+    else
+        _pm_log "MARK" "$slot" "$new_status"
+        echo "✓ $slot 状态已更新为: $new_status"
+    fi
+}
+
+# 智能检测槽位状态
+# 用法: pm-check <slot>
+pm-check() {
+    local slot="$1"
+    local session=$(tmux display-message -p '#{session_name}' 2>/dev/null)
+
+    [ -z "$slot" ] && {
+        echo "用法: pm-check <slot>"
+        echo "示例: pm-check dev-1"
+        return 1
+    }
+
+    local var_prefix="${slot^^}"
+    var_prefix="${var_prefix//-/_}"
+
+    # 检查槽位存在
+    tmux list-windows -t "$session" -F '#{window_name}' | grep -q "^${slot}$" || {
+        echo "错误: 槽位 $slot 不存在"
+        return 1
+    }
+
+    # 获取最近 30 行输出
+    local output=$(tmux capture-pane -t "$session:$slot" -p -S -30 2>/dev/null)
+
+    # 解析状态标记 (从后往前匹配，取最新的)
+    local detected_status=""
+    local detected_message=""
+
+    if echo "$output" | grep -q "\[STATUS:DONE\]"; then
+        detected_status="done"
+        detected_message=$(echo "$output" | grep "\[STATUS:DONE\]" | tail -1 | sed 's/.*\[STATUS:DONE\] *//')
+    elif echo "$output" | grep -q "\[STATUS:ERROR\]"; then
+        detected_status="error"
+        detected_message=$(echo "$output" | grep "\[STATUS:ERROR\]" | tail -1 | sed 's/.*\[STATUS:ERROR\] *//')
+    elif echo "$output" | grep -q "\[STATUS:BLOCKED\]"; then
+        detected_status="blocked"
+        detected_message=$(echo "$output" | grep "\[STATUS:BLOCKED\]" | tail -1 | sed 's/.*\[STATUS:BLOCKED\] *//')
+    elif echo "$output" | grep -q "\[STATUS:PROGRESS\]"; then
+        detected_status="progress"
+        detected_message=$(echo "$output" | grep "\[STATUS:PROGRESS\]" | tail -1 | sed 's/.*\[STATUS:PROGRESS\] *//')
+    fi
+
+    if [[ -n "$detected_status" ]]; then
+        echo "detected: $detected_status - $detected_message"
+
+        # 自动更新状态 (blocked 和 progress 不自动更新，只提示)
+        if [[ "$detected_status" == "done" || "$detected_status" == "error" ]]; then
+            pm-mark "$slot" "$detected_status"
+        elif [[ "$detected_status" == "blocked" ]]; then
+            echo "⚠ 槽位 $slot 被阻塞: $detected_message"
+        elif [[ "$detected_status" == "progress" ]]; then
+            echo "→ 槽位 $slot 进度: $detected_message"
+        fi
+
+        _pm_log "CHECK" "$slot" "detected: $detected_status - $detected_message"
+    else
+        echo "detected: working - 未检测到状态标记"
+    fi
+}
+
+# 广播消息到所有工作中的槽位
+# 用法: pm-broadcast <message>
+pm-broadcast() {
+    local message="$1"
+    local session=$(tmux display-message -p '#{session_name}' 2>/dev/null)
+
+    [ -z "$message" ] && {
+        echo "用法: pm-broadcast <message>"
+        echo "示例: pm-broadcast \"请准备提交代码\""
+        return 1
+    }
+
+    local sent_count=0
+
+    for slot in dev-1 dev-2 qa; do
+        local var_prefix="${slot^^}"
+        var_prefix="${var_prefix//-/_}"
+
+        local status=$(tmux show-environment -t "$session" "${var_prefix}_STATUS" 2>/dev/null | cut -d= -f2)
+
+        if [[ "$status" == "working" ]]; then
+            tsc "$session:$slot" "[PM 广播] $message"
+            echo "→ $slot: 已发送"
+            sent_count=$((sent_count + 1))
+        fi
+    done
+
+    if [[ $sent_count -eq 0 ]]; then
+        echo "⚠ 没有工作中的槽位"
+    else
+        _pm_log "BROADCAST" "-" "$message (发送到 $sent_count 个槽位)"
+        echo ""
+        echo "✓ 广播完成: $sent_count 个槽位"
+    fi
+}
+
+# 查看 PM 操作历史
+# 用法: pm-history [n|today|all]
+pm-history() {
+    local filter="${1:-20}"
+    local session=$(tmux display-message -p '#{session_name}' 2>/dev/null)
+    local today=$(date +%Y%m%d)
+    local log_file="$AGENT_LOG_DIR/pm_${session}_${today}.log"
+
+    if [[ ! -f "$log_file" ]]; then
+        echo "今日无 PM 日志"
+        echo "日志路径: $log_file"
+        return 0
+    fi
+
+    echo "═══════════════════════════════════════════════════════════"
+    echo "  PM 操作历史 - $session ($(date +%Y-%m-%d))"
+    echo "═══════════════════════════════════════════════════════════"
+
+    case "$filter" in
+        today|all)
+            cat "$log_file"
+            ;;
+        *)
+            tail -n "$filter" "$log_file"
+            ;;
+    esac
+
+    echo "═══════════════════════════════════════════════════════════"
+    echo "日志文件: $log_file"
+}
+
+#===============================================================================
 # 使用说明
 #===============================================================================
 #
@@ -1432,6 +1757,15 @@ alias tp='tmux list-panes'
 #   view-agent-logs [session]   查看今日日志
 #   end-agent <session> <win>   结束 Agent 并保存日志
 #   clean-agent-logs [days]     清理旧日志
+#
+# PM 槽位管理 (v3.4):
+#   pm-init-slots               初始化 3 个槽位 (dev-1, dev-2, qa)
+#   pm-assign <slot> <role> <task>  分配任务到槽位
+#   pm-status                   查看所有槽位状态面板
+#   pm-check <slot>             智能检测槽位状态 (解析 [STATUS:*])
+#   pm-mark <slot> <status>     手动标记槽位状态
+#   pm-broadcast <message>      广播消息到所有工作中的槽位
+#   pm-history [n|today|all]    查看 PM 操作历史
 #
 #===============================================================================
 

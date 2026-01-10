@@ -10,6 +10,16 @@
 
 ```mermaid
 graph TB
+    subgraph PMSlots["🎯 PM 槽位管理 (v3.4)"]
+        INIT["pm-init.md<br/>初始化槽位"]
+        ASSIGN["pm-assign.md<br/>分配任务"]
+        STATUS["pm-status.md<br/>状态面板"]
+        CHECK["pm-check.md<br/>智能检测"]
+        MARK["pm-mark.md<br/>标记状态"]
+        BROADCAST["pm-broadcast.md<br/>广播消息"]
+        HISTORY["pm-history.md<br/>操作历史"]
+    end
+
     subgraph Management["📋 管理命令"]
         PM["pm-oversight.md<br/>PM 监督模式"]
         DEPLOY["deploy-team.md<br/>团队部署"]
@@ -22,12 +32,29 @@ graph TB
         REVIEW["role-reviewer.md<br/>代码审查员"]
     end
 
+    INIT --> ASSIGN
+    ASSIGN --> STATUS
+    CHECK --> MARK
     PM -->|"监督"| DEV
     PM -->|"验收"| QA
     DEPLOY -->|"部署"| Roles
 ```
 
 ## 命令索引
+
+### PM 槽位管理命令 (v3.4 新增)
+
+| 命令 | 调用方式 | 用途 |
+|------|----------|------|
+| pm-init | `/tmuxAI:pm-init` | 初始化 3 个槽位 (dev-1, dev-2, qa) |
+| pm-assign | `/tmuxAI:pm-assign` | 分配任务到槽位 |
+| pm-status | `/tmuxAI:pm-status` | 查看槽位状态面板 |
+| pm-check | `/tmuxAI:pm-check` | 智能检测槽位状态 |
+| pm-mark | `/tmuxAI:pm-mark` | 手动标记槽位状态 |
+| pm-broadcast | `/tmuxAI:pm-broadcast` | 广播消息到工作中的槽位 |
+| pm-history | `/tmuxAI:pm-history` | 查看 PM 操作历史 |
+
+### 原有命令
 
 | 命令 | 调用方式 | 用途 |
 |------|----------|------|
