@@ -1606,21 +1606,22 @@ pm-check() {
     local output=$(tmux capture-pane -t "$session:$slot" -p -S -30 2>/dev/null)
 
     # 解析状态标记 (从后往前匹配，取最新的)
+    # 注意: 使用行首匹配避免误判文档中的示例文字
     local detected_status=""
     local detected_message=""
 
-    if echo "$output" | grep -q "\[STATUS:DONE\]"; then
+    if echo "$output" | grep -qE "^[[:space:]]*\[STATUS:DONE\]"; then
         detected_status="done"
-        detected_message=$(echo "$output" | grep "\[STATUS:DONE\]" | tail -1 | sed 's/.*\[STATUS:DONE\] *//')
-    elif echo "$output" | grep -q "\[STATUS:ERROR\]"; then
+        detected_message=$(echo "$output" | grep -E "^[[:space:]]*\[STATUS:DONE\]" | tail -1 | sed 's/^[[:space:]]*\[STATUS:DONE\][[:space:]]*//')
+    elif echo "$output" | grep -qE "^[[:space:]]*\[STATUS:ERROR\]"; then
         detected_status="error"
-        detected_message=$(echo "$output" | grep "\[STATUS:ERROR\]" | tail -1 | sed 's/.*\[STATUS:ERROR\] *//')
-    elif echo "$output" | grep -q "\[STATUS:BLOCKED\]"; then
+        detected_message=$(echo "$output" | grep -E "^[[:space:]]*\[STATUS:ERROR\]" | tail -1 | sed 's/^[[:space:]]*\[STATUS:ERROR\][[:space:]]*//')
+    elif echo "$output" | grep -qE "^[[:space:]]*\[STATUS:BLOCKED\]"; then
         detected_status="blocked"
-        detected_message=$(echo "$output" | grep "\[STATUS:BLOCKED\]" | tail -1 | sed 's/.*\[STATUS:BLOCKED\] *//')
-    elif echo "$output" | grep -q "\[STATUS:PROGRESS\]"; then
+        detected_message=$(echo "$output" | grep -E "^[[:space:]]*\[STATUS:BLOCKED\]" | tail -1 | sed 's/^[[:space:]]*\[STATUS:BLOCKED\][[:space:]]*//')
+    elif echo "$output" | grep -qE "^[[:space:]]*\[STATUS:PROGRESS\]"; then
         detected_status="progress"
-        detected_message=$(echo "$output" | grep "\[STATUS:PROGRESS\]" | tail -1 | sed 's/.*\[STATUS:PROGRESS\] *//')
+        detected_message=$(echo "$output" | grep -E "^[[:space:]]*\[STATUS:PROGRESS\]" | tail -1 | sed 's/^[[:space:]]*\[STATUS:PROGRESS\][[:space:]]*//')
     fi
 
     if [[ -n "$detected_status" ]]; then
