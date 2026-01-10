@@ -24,7 +24,7 @@ AI 项目自动化工具包 - 将 tmux 与 Claude Code 集成，实现自主多 
 ### 1. 克隆仓库
 
 ```bash
-git clone https://github.com/yourusername/Tmux-AI-Team.git
+git clone https://github.com/coolwoo/Tmux-AI-Team.git
 cd Tmux-AI-Team
 ```
 
