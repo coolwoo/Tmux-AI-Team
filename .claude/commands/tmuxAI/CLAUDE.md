@@ -10,7 +10,7 @@
 
 ```mermaid
 graph TB
-    subgraph PMSlots["🎯 PM 槽位管理 (v3.4)"]
+    subgraph PMSlots["🎯 PM 槽位管理 (v3.5)"]
         INIT["pm-init.md<br/>初始化槽位"]
         ASSIGN["pm-assign.md<br/>分配任务"]
         STATUS["pm-status.md<br/>状态面板"]
@@ -18,6 +18,9 @@ graph TB
         MARK["pm-mark.md<br/>标记状态"]
         BROADCAST["pm-broadcast.md<br/>广播消息"]
         HISTORY["pm-history.md<br/>操作历史"]
+        ADD["pm-add-slot<br/>添加槽位"]
+        REMOVE["pm-remove-slot<br/>删除槽位"]
+        LIST["pm-list-slots<br/>列出槽位"]
     end
 
     subgraph Management["📋 管理命令"]
@@ -42,17 +45,27 @@ graph TB
 
 ## 命令索引
 
-### PM 槽位管理命令 (v3.4 新增)
+### PM 槽位管理命令 (v3.5)
 
 | 命令 | 调用方式 | 用途 |
 |------|----------|------|
-| pm-init | `/tmuxAI:pm-init` | 初始化 3 个槽位 (dev-1, dev-2, qa) |
+| pm-init | `/tmuxAI:pm-init` | 初始化槽位（默认创建 dev-1） |
 | pm-assign | `/tmuxAI:pm-assign` | 分配任务到槽位 |
-| pm-status | `/tmuxAI:pm-status` | 查看槽位状态面板 |
+| pm-status | `/tmuxAI:pm-status` | 查看槽位状态面板（带过时检测） |
 | pm-check | `/tmuxAI:pm-check` | 智能检测槽位状态 |
 | pm-mark | `/tmuxAI:pm-mark` | 手动标记槽位状态 |
 | pm-broadcast | `/tmuxAI:pm-broadcast` | 广播消息到工作中的槽位 |
 | pm-history | `/tmuxAI:pm-history` | 查看 PM 操作历史 |
+
+### 动态槽位管理命令 (v3.5 新增)
+
+| 命令 | Bash 函数 | 用途 |
+|------|-----------|------|
+| 添加槽位 | `pm-add-slot <name>` | 动态添加新槽位 |
+| 删除槽位 | `pm-remove-slot <name>` | 删除槽位并关闭窗口 |
+| 列出槽位 | `pm-list-slots` | 显示当前槽位列表 |
+
+> **注意**: `pm-remove-slot` 对工作中的槽位有保护机制，使用 `--force` 会先通知 Agent 再关闭。
 
 ### 原有命令
 

@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-> 📅 Last updated: 2026-01-10 13:39:28
+> 📅 Last updated: 2026-01-11
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
@@ -40,7 +40,8 @@ graph TB
             subgraph TmuxAI["tmuxAI/"]
                 PM["pm-oversight.md"]
                 DEPLOY["deploy-team.md"]
-                ROLES["role-*.md"]
+                ROLES["role-*.md (4个)"]
+                PMSLOTS["pm-*.md (10个)<br/>槽位管理 v3.5"]
             end
             subgraph Other["其他命令组"]
                 SECURITY["security/"]
@@ -206,6 +207,16 @@ graph LR
         tsc["tsc()"]
     end
 
+    subgraph PMSlots["PM 槽位管理"]
+        init["pm-init-slots()"]
+        add["pm-add-slot()"]
+        remove["pm-remove-slot()"]
+        list["pm-list-slots()"]
+        pmstatus["pm-status()"]
+        pmcheck["pm-check()"]
+        pmmark["pm-mark()"]
+    end
+
     subgraph Schedule["自调度"]
         sched["schedule-checkin()"]
         note["read-next-note()"]
@@ -287,11 +298,11 @@ check-deps
 环境变量（在 `~/.bashrc` 中设置）：
 
 ```bash
-export CODING_BASE="$HOME/Coding"   # 项目目录
-export CLAUDE_CMD="claude"          # Claude 命令
-export DEFAULT_DELAY="1"            # 消息延迟(秒)
-export TMUX_AI_TEAM_DIR="$HOME/Coding/Tmux-AI-Team"  # 工具包目录
-export AGENT_LOG_DIR="$HOME/.agent-logs"  # 日志目录
+export CODING_BASE="$HOME/Coding"   # 项目根目录（所有项目应在此目录下）
+export CLAUDE_CMD="claude"          # Claude CLI 命令名
+export DEFAULT_DELAY="1"            # tsc 消息发送延迟(秒)
+export TMUX_AI_TEAM_DIR="$HOME/Coding/Tmux-AI-Team"  # 本工具包目录
+export AGENT_LOG_DIR="$HOME/.agent-logs"  # Agent 日志目录（PM 操作日志、对话捕获等）
 ```
 
 ## 注意事项
