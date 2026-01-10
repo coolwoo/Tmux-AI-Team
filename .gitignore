@@ -1,2 +1,5 @@
 # Prompts directory (local prompts)
 prompts/
+
+# Claude Code configuration (local)
+.claude/
