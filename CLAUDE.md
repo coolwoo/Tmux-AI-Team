@@ -220,6 +220,7 @@ bash -n bashrc-ai-automation-v2.sh
 graph LR
     subgraph Core["核心函数"]
         fire["fire()"]
+        addwin["add-window()"]
         tsc["tsc()"]
     end
 
@@ -294,6 +295,16 @@ fire my-project
 
 fire --auto my-project
 # → 同上，但会自动发送任务简报
+```
+
+### 添加窗口 (add-window)
+
+按需创建额外窗口：
+
+```bash
+add-window Shell   # 创建 Shell 窗口
+add-window Server  # 创建 Server 窗口
+# → 窗口已存在时自动切换到该窗口
 ```
 
 ### 环境自检 (check-deps)

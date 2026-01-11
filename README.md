@@ -202,6 +202,7 @@ claude
 |------|------|
 | `check-deps` | 检查依赖并显示安装建议 |
 | `fire <project>` | 快速启动项目 |
+| `add-window <name>` | 按需创建窗口 (如 Shell、Server) |
 | `tsc <target> <msg>` | 发送消息到 Claude |
 | `check-agent [session]` | 查看 Agent 状态 |
 | `monitor-snapshot [session]` | 生成监控快照 |
