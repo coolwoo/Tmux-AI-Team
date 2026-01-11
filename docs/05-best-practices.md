@@ -122,22 +122,6 @@ end-agent my-project Claude "完成用户认证模块"
 
 ### 4. 项目管理规范
 
-#### 使用项目规范文件
-
-```bash
-# 创建规范
-create-spec my-project
-
-# 编辑规范，明确定义
-vim ~/Coding/my-project/project_spec.md
-```
-
-**规范文件应包含**：
-- 明确的目标
-- 约束条件
-- 交付物清单
-- 成功标准
-
 #### PM 验收清单
 
 每个功能验收时检查：
@@ -278,14 +262,13 @@ git merge feature/my-feature
 
 #### ❌ 无规范开始工作
 ```
-# 错误: 直接开始编码
+# 错误: 直接开始编码，不明确任务目标
 fire my-project
 # 立即开始写代码...
 
-# 正确: 先创建规范
-create-spec my-project
-# 编辑规范文件
+# 正确: 明确任务目标后再开始
 fire my-project
+# 告诉 Agent 具体任务: tsc my-project:Claude "实现用户登录功能"
 ```
 
 #### ❌ 忽略阻塞
@@ -298,13 +281,13 @@ fire my-project
 send-blocked pm:Claude Developer "问题描述" "已尝试的方案" "需要的帮助"
 ```
 
-#### ❌ 偏离规范
+#### ❌ 偏离任务
 ```
-# 错误: 做规范外的工作
+# 错误: 做任务外的工作
 "顺便重构一下这个模块..."
 "这里也可以优化..."
 
-# 正确: 专注于规范定义的任务
+# 正确: 专注于任务定义的目标
 "当前任务: 实现登录接口，其他优化记录到 TODO"
 ```
 
@@ -392,8 +375,7 @@ tsc session:Claude "message"
 
 ### 项目启动前
 
-- [ ] 项目规范文件已创建
-- [ ] 规范内容清晰完整
+- [ ] 任务目标已明确
 - [ ] 团队配置已确定
 - [ ] Git 仓库已初始化
 

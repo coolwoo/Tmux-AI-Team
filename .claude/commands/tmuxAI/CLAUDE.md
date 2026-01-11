@@ -97,7 +97,7 @@ graph TB
 
 ```bash
 # PM 监督模式
-/tmuxAI:pm-oversight my-project SPEC: ~/Coding/my-project/spec.md
+/tmuxAI:pm-oversight my-project 实现用户登录功能
 
 # 部署团队
 /tmuxAI:deploy-team my-project medium
@@ -110,12 +110,12 @@ graph TB
 
 ### pm-oversight
 ```
-<项目名称> [任务描述] [SPEC: <规范文件路径>]
+<项目名称> [任务描述]
 ```
 
 ### deploy-team
 ```
-<项目名称> [small|medium|large] [SPEC: <规范文件路径>]
+<项目名称> [small|medium|large] [任务描述]
 ```
 
 ### role-* 命令

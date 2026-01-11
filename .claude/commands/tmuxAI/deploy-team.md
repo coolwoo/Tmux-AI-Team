@@ -11,7 +11,7 @@ $ARGUMENTS
 
 **参数格式**:
 ```
-<项目名称> [small|medium|large] [SPEC: <规范文件路径>]
+<项目名称> [small|medium|large] [任务描述]
 ```
 
 **示例**:
@@ -22,17 +22,14 @@ my-project
 # 指定规模
 my-project large
 
-# 带规范文件
-my-project SPEC: docs/requirements.md
-
-# 完整参数
-my-project medium SPEC: "docs/project spec.md"
+# 带任务描述
+my-project medium 实现用户认证系统
 ```
 
 **解析规则**:
 1. **项目名称** - 第一个参数，必须
 2. **团队规模** - small/medium/large，可选，默认 medium
-3. **规范文件** - `SPEC:` 后的路径，可选，路径含空格时使用引号
+3. **任务描述** - 其余内容，可选
 
 ## 团队配置建议
 
@@ -117,9 +114,6 @@ my-project medium SPEC: "docs/project spec.md"
 # 检查项目类型和规模
 ls -la ~/Coding/<project>/
 wc -l $(find ~/Coding/<project> -name "*.py" -o -name "*.js" -o -name "*.ts" 2>/dev/null) | tail -1
-
-# 检查是否有规范文件
-cat ~/Coding/<project>/project_spec.md 2>/dev/null
 ```
 
 ### 2. 初始化 PM 槽位

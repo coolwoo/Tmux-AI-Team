@@ -43,7 +43,7 @@
 
 **调用方式**:
 ```
-/tmuxAI:deploy-team <项目名称> [small|medium|large] [SPEC: <规范文件路径>]
+/tmuxAI:deploy-team <项目名称> [small|medium|large] [任务描述]
 ```
 
 **示例**:
@@ -54,11 +54,8 @@
 # 指定规模
 /tmuxAI:deploy-team my-project large
 
-# 带规范文件
-/tmuxAI:deploy-team my-project SPEC: docs/requirements.md
-
-# 完整参数
-/tmuxAI:deploy-team my-project medium SPEC: "docs/project spec.md"
+# 带任务描述
+/tmuxAI:deploy-team my-project medium 实现用户认证系统
 ```
 
 **团队规模配置**:
@@ -102,7 +99,7 @@
 
 **调用方式**:
 ```
-/tmuxAI:pm-oversight <项目名称> [任务描述] [SPEC: <规范文件路径>]
+/tmuxAI:pm-oversight <项目名称> [任务描述]
 ```
 
 **示例**:
@@ -113,18 +110,15 @@
 # 带任务描述
 /tmuxAI:pm-oversight frontend-project 实现用户登录功能
 
-# 带规范文件
-/tmuxAI:pm-oversight frontend-project SPEC: ~/Coding/my-app/project_spec.md
-
-# 完整参数
-/tmuxAI:pm-oversight backend-project API 开发 SPEC: "/path/to/spec.md"
+# 多项目监督
+/tmuxAI:pm-oversight backend API 和 frontend UI
 ```
 
 **核心职责**:
-- 阅读规范文件，制定监督计划
+- 制定监督计划
 - 监控服务器日志，检测错误
 - 与工程师 Agent 通信，获取进度
-- 逐个功能验收，对照规范检查
+- 逐个功能验收，对照任务要求检查
 
 **关键命令**:
 ```bash
@@ -144,7 +138,7 @@ tmux send-keys -t <session>:Claude "消息内容" C-m
 **工作原则**:
 - 不打断正在工作的工程师
 - 逐个功能验收
-- 对照规范检查
+- 对照任务要求检查
 - 及时反馈错误信息
 
 **工程师状态判断**:

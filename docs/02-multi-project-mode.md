@@ -140,10 +140,13 @@ tsc backend:Claude "请实现 /api/auth/login 接口"
 
 ```bash
 # 通知 frontend 等待 backend
-send-to-agent frontend:Claude "请等待 backend 完成 API，预计 30 分钟"
+tsc frontend:Claude "请等待 backend 完成 API，预计 30 分钟"
 
 # 通知 backend 优先完成某接口
-send-to-agent backend:Claude "frontend 需要 /api/users 接口，请优先处理"
+tsc backend:Claude "frontend 需要 /api/users 接口，请优先处理"
+
+# 静默模式（不输出确认信息）
+tsc -q backend:Claude "后台通知消息"
 ```
 
 ### 广播消息
@@ -193,12 +196,12 @@ goto backend
         ┌───────────────────┴───────────────────┐
         │                                       │
         ▼                                       ▼
-   ┌─────────────┐                       ┌─────────────┐
-   │ 📝 创建规范  │                       │ 🔥 启动项目  │
-   │ create-spec │                       │    fire     │
-   │  frontend   │                       │  frontend   │
-   │  backend    │                       │  backend    │
-   └─────────────┘                       └─────────────┘
+                                        ┌─────────────┐
+                                        │ 🔥 启动项目  │
+                                        │    fire     │
+                                        │  frontend   │
+                                        │  backend    │
+                                        └─────────────┘
                             │
                             ▼
     ╔═══════════════════════════════════════════════════╗
@@ -247,17 +250,17 @@ goto backend
 
 ```bash
 # 1. 通知 Backend 优先级
-send-to-agent backend:Claude "Frontend 需要以下 API，请优先实现：
+tsc backend:Claude "Frontend 需要以下 API，请优先实现：
 - POST /api/auth/login
 - GET /api/users/me
 - PUT /api/users/me"
 
 # 2. 通知 Frontend 等待
-send-to-agent frontend:Claude "请先实现不依赖 API 的部分（UI 布局、表单验证）。
+tsc frontend:Claude "请先实现不依赖 API 的部分（UI 布局、表单验证）。
 Backend 正在实现 API，预计 1 小时后可用。"
 
 # 3. Backend 完成后通知 Frontend
-send-to-agent frontend:Claude "API 已就绪：
+tsc frontend:Claude "API 已就绪：
 - POST /api/auth/login - 登录接口
 - GET /api/users/me - 获取当前用户
 - PUT /api/users/me - 更新用户信息
@@ -315,13 +318,13 @@ fire frontend
 fire backend
 
 # 2. Backend 先开发 API
-send-to-agent backend:Claude "请先实现用户认证 API"
+tsc backend:Claude "请先实现用户认证 API"
 
 # 3. Frontend 开发 UI
-send-to-agent frontend:Claude "请先实现登录页面 UI，使用 mock 数据"
+tsc frontend:Claude "请先实现登录页面 UI，使用 mock 数据"
 
 # 4. 联调
-send-to-agent frontend:Claude "Backend API 已就绪，请替换 mock 数据进行联调"
+tsc frontend:Claude "Backend API 已就绪，请替换 mock 数据进行联调"
 ```
 
 ### 场景 2: 微服务开发
@@ -333,8 +336,8 @@ fire order-service
 fire payment-service
 
 # 协调服务间依赖
-send-to-agent order-service:Claude "user-service 已完成用户验证接口，请集成"
-send-to-agent payment-service:Claude "order-service 订单创建接口已就绪，请实现支付流程"
+tsc order-service:Claude "user-service 已完成用户验证接口，请集成"
+tsc payment-service:Claude "order-service 订单创建接口已就绪，请实现支付流程"
 ```
 
 ### 场景 3: 紧急修复
@@ -344,55 +347,30 @@ send-to-agent payment-service:Claude "order-service 订单创建接口已就绪�
 broadcast "紧急：发现生产环境 bug，请暂停当前工作"
 
 # 指定 Agent 处理
-send-to-agent backend:Claude "请紧急修复 /api/orders 接口的空指针问题"
+tsc backend:Claude "请紧急修复 /api/orders 接口的空指针问题"
 
 # 其他 Agent 继续
-send-to-agent frontend:Claude "Backend 在处理紧急 bug，请继续其他工作"
+tsc frontend:Claude "Backend 在处理紧急 bug，请继续其他工作"
 ```
 
 ---
 
 ## 最佳实践
 
-### 1. 项目规范先行
-
-```bash
-# 启动前先创建规范
-create-spec frontend
-create-spec backend
-
-# 编辑规范，明确职责边界
-vim ~/Coding/frontend/project_spec.md
-vim ~/Coding/backend/project_spec.md
-```
-
-### 2. 明确接口契约
+### 1. 明确接口契约
 
 在开始前，定义好跨项目接口：
 
 ```bash
-# 创建共享的 API 规范
-cat > ~/Coding/shared/api-spec.md << 'EOF'
-# API 规范
-
-## 用户认证
+# 通知各 Agent API 规范
+broadcast "请遵循以下接口规范:
 - POST /api/auth/login
 - POST /api/auth/logout
 - GET /api/auth/me
-
-## 响应格式
-{
-  "success": boolean,
-  "data": object,
-  "error": string
-}
-EOF
-
-# 通知各 Agent
-broadcast "请阅读 ~/Coding/shared/api-spec.md 了解接口规范"
+响应格式: { success: boolean, data: object, error: string }"
 ```
 
-### 3. 定期同步状态
+### 2. 定期同步状态
 
 ```bash
 # 每小时检查一次
@@ -410,7 +388,7 @@ check-agent frontend
 # 输出显示："等待 backend API..."
 
 # 立即协调
-send-to-agent backend:Claude "frontend 被阻塞，请优先完成 /api/users 接口"
+tsc backend:Claude "frontend 被阻塞，请优先完成 /api/users 接口"
 ```
 
 ---
@@ -423,8 +401,9 @@ send-to-agent backend:Claude "frontend 被阻塞，请优先完成 /api/users �
 | `list-agents` | 列出所有 Agent |
 | `monitor-snapshot` | 生成监控快照 |
 | `check-agent <session>` | 检查单个 Agent |
-| `tsc <target> <msg>` | 发送消息 |
-| `send-to-agent <target> <msg>` | 向 Agent 发送消息 |
+| `tsc <target> <msg>` | 发送消息（默认输出确认信息） |
+| `tsc -q <target> <msg>` | 静默模式发送消息 |
+| `send-to-agent` | `tsc` 的别名 |
 | `broadcast <msg>` | 广播到所有 Agent |
 | `find-window <name>` | 查找窗口 |
 | `goto <session>` | 切换会话 |
@@ -514,6 +493,6 @@ tmux list-windows -t <session>
 broadcast "请暂停工作，等待协调指令"
 
 # 逐个发送明确指令
-send-to-agent frontend:Claude "你的任务: ..."
-send-to-agent backend:Claude "你的任务: ..."
+tsc frontend:Claude "你的任务: ..."
+tsc backend:Claude "你的任务: ..."
 ```

@@ -13,13 +13,12 @@ PM 监督模式让一个 Claude Agent 作为项目经理 (PM)，自动监督多�
 ║                     📋 PM Agent (项目经理)                            ║
 ║  ┌────────────────────────────────────────────────────────────────┐  ║
 ║  │  职责:                                                         │  ║
-║  │  📖 阅读 Spec 文件理解需求                                      │  ║
 ║  │  🔍 定期检查 Engineer 进度                                      │  ║
 ║  │  📊 监控 Server 日志反馈错误                                    │  ║
-║  │  ✅ 对照规范验收功能                                            │  ║
+║  │  ✅ 对照任务要求验收功能                                        │  ║
 ║  │  ⏰ 安排下次检查时间                                            │  ║
 ║  ├────────────────────────────────────────────────────────────────┤  ║
-║  │  启动方式: /tmuxAI:pm-oversight <项目> SPEC: <规范文件>                │  ║
+║  │  启动方式: /tmuxAI:pm-oversight <项目> [任务描述]                    │  ║
 ║  └────────────────────────────────────────────────────────────────┘  ║
 ╚═══════════════════════════════════╦══════════════════════════════════╝
                                     │
@@ -72,44 +71,7 @@ PM 监督模式让一个 Claude Agent 作为项目经理 (PM)，自动监督多�
 ls .claude/commands/tmuxAI/pm-oversight.md
 ```
 
-### 步骤 1: 创建项目规范
-
-```bash
-# 创建规范文件
-create-spec my-project
-
-# 编辑规范文件
-vim ~/Coding/my-project/project_spec.md
-```
-
-**规范文件示例**:
-
-```markdown
-# 项目规范: my-project
-
-## 目标
-实现用户认证系统
-
-## 约束条件
-- 使用 JWT 进行认证
-- 密码使用 bcrypt 加密
-- 遵循 RESTful API 设计
-- 每 30 分钟提交代码
-
-## 交付物
-1. POST /api/auth/register - 用户注册
-2. POST /api/auth/login - 用户登录
-3. POST /api/auth/logout - 用户登出
-4. GET /api/auth/me - 获取当前用户
-
-## 成功标准
-- [ ] 所有接口测试通过
-- [ ] 密码正确加密存储
-- [ ] JWT 正确生成和验证
-- [ ] 错误处理完善
-```
-
-### 步骤 2: 启动 Engineer Agent
+### 步骤 1: 启动 Engineer Agent
 
 ```bash
 # 在终端 1 启动项目
@@ -118,18 +80,18 @@ fire my-project
 
 Engineer Agent 会自动开始工作。
 
-### 步骤 3: 启动 PM Agent
+### 步骤 2: 启动 PM Agent
 
 ```bash
 # 在终端 2 启动 Claude Code
 claude
 
 # 执行 PM 监督命令
-/tmuxAI:pm-oversight my-project SPEC: ~/Coding/my-project/project_spec.md
+/tmuxAI:pm-oversight my-project 实现用户认证系统
 ```
 
 PM Agent 会：
-1. 阅读规范文件
+1. 识别要监控的会话
 2. 制定监督计划
 3. 开始定期检查
 
@@ -147,23 +109,13 @@ PM Agent 会：
     ║  📝 1. 解析参数                                                ║
     ║  ┌─────────────────────────────────────────────────────────┐  ║
     ║  │  • 项目名称: my-project                                  │  ║
-    ║  │  • 规范文件: ~/Coding/my-project/project_spec.md        │  ║
+    ║  │  • 任务描述: 实现用户认证系统                             │  ║
     ║  └─────────────────────────────────────────────────────────┘  ║
     ╚═══════════════════════════════╦═══════════════════════════════╝
                                     │
                                     ▼
     ╔═══════════════════════════════════════════════════════════════╗
-    ║  📖 2. 阅读规范文件                                            ║
-    ║  ┌─────────────────────────────────────────────────────────┐  ║
-    ║  │  • 理解项目目标                                          │  ║
-    ║  │  • 识别交付物清单                                        │  ║
-    ║  │  • 明确成功标准                                          │  ║
-    ║  └─────────────────────────────────────────────────────────┘  ║
-    ╚═══════════════════════════════╦═══════════════════════════════╝
-                                    │
-                                    ▼
-    ╔═══════════════════════════════════════════════════════════════╗
-    ║  📋 3. 制定监督计划                                            ║
+    ║  📋 2. 制定监督计划                                            ║
     ║  ┌─────────────────────────────────────────────────────────┐  ║
     ║  │  • 确定检查频率 (如每 15 分钟)                            │  ║
     ║  │  • 规划验收顺序                                          │  ║
@@ -172,7 +124,7 @@ PM Agent 会：
                                     │
                                     ▼
     ╔═══════════════════════════════════════════════════════════════╗
-    ║  🔄 4. 执行监督循环                                            ║
+    ║  🔄 3. 执行监督循环                                            ║
     ║  ╭─────────────────────────────────────────────────────────╮  ║
     ║  │  📊 a. 生成监控快照                                      │  ║
     ║  │       monitor-snapshot my-project                       │  ║
@@ -189,7 +141,7 @@ PM Agent 会：
     ║  │       tsc my-project:Claude "发现错误..."               │  ║
     ║  ├─────────────────────────────────────────────────────────┤  ║
     ║  │  ✅ e. 验收已完成功能                                    │  ║
-    ║  │       对照 Spec 检查                                     │  ║
+    ║  │       对照任务要求检查                                   │  ║
     ║  ├─────────────────────────────────────────────────────────┤  ║
     ║  │  ⏰ f. 安排下次检查                                      │  ║
     ║  │       schedule-checkin 15 "检查功能X"                    │  ║
@@ -203,7 +155,7 @@ PM Agent 会：
                                     │
                                     ▼
     ╔═══════════════════════════════════════════════════════════════╗
-    ║  🎯 5. 所有功能验收完成                                        ║
+    ║  🎯 4. 所有功能验收完成                                        ║
     ║  ┌─────────────────────────────────────────────────────────┐  ║
     ║  │  • 通知 Engineer 任务完成                                │  ║
     ║  │  • 生成最终报告                                          │  ║
@@ -274,10 +226,10 @@ schedule-checkin 30 "检查整体进度"
 
 ### 逐个功能验收
 
-PM 应按照 Spec 中的交付物清单，逐个验收：
+PM 应按照任务描述中的交付物清单，逐个验收：
 
 ```
-Spec 交付物:
+任务交付物:
 1. POST /api/auth/register ─────► 验收 ✓
 2. POST /api/auth/login ────────► 验收 ✓
 3. POST /api/auth/logout ───────► 验收中...
@@ -353,12 +305,12 @@ check-agent my-project
 tsc my-project:Claude "请汇报当前状态，是否遇到阻塞？"
 ```
 
-### PM 发现偏离规范
+### PM 发现偏离任务
 
 ```bash
-# PM 发现 Engineer 在做规范外的工作
+# PM 发现 Engineer 在做任务外的工作
 tsc my-project:Claude "请注意：当前任务应聚焦于用户认证系统。
-请暂停其他工作，专注于 Spec 中定义的交付物。"
+请暂停其他工作，专注于任务定义的交付物。"
 ```
 
 ---
@@ -371,7 +323,7 @@ tsc my-project:Claude "请注意：当前任务应聚焦于用户认证系统。
 
 ```bash
 # PM 命令支持多项目
-/tmuxAI:pm-oversight frontend 和 backend SPEC: ~/Coding/shared/project_spec.md
+/tmuxAI:pm-oversight frontend 和 backend 实现完整的认证系统
 ```
 
 PM 会轮流检查各项目。
@@ -408,17 +360,12 @@ schedule-checkin 30 "检查重构进度"
 
 ## 最佳实践
 
-### 1. 规范文件要详细
+### 1. 任务描述要清晰
 
-```markdown
-# 好的规范示例
-
-## 交付物
-1. POST /api/auth/login
-   - 输入: { email, password }
-   - 输出: { token, user }
-   - 错误码: 401 (无效凭证), 400 (参数缺失)
-```
+分配任务时应明确交付物：
+- 具体功能要求
+- 输入输出格式
+- 成功标准
 
 ### 2. PM 检查要系统化
 
@@ -440,11 +387,11 @@ schedule-checkin 15 "下次检查" # 5. 安排下次
 tsc my-project:Claude "紧急：Server 崩溃，请检查"
 ```
 
-### 4. 保持规范焦点
+### 4. 保持任务焦点
 
 ```bash
 # PM 应定期提醒 Engineer 保持焦点
-tsc my-project:Claude "提醒：请专注于当前任务，避免偏离 Spec 定义的范围"
+tsc my-project:Claude "提醒：请专注于当前任务，避免偏离任务定义的范围"
 ```
 
 ---
@@ -453,7 +400,7 @@ tsc my-project:Claude "提醒：请专注于当前任务，避免偏离 Spec 定
 
 | 命令 | 说明 |
 |------|------|
-| `/tmuxAI:pm-oversight <项目> SPEC: <文件>` | 启动 PM 监督 |
+| `/tmuxAI:pm-oversight <项目> [任务描述]` | 启动 PM 监督 |
 | `monitor-snapshot [session]` | 生成监控快照 |
 | `check-agent <session>` | 检查 Agent 状态 |
 | `tsc <target> <msg>` | 发送消息 |
@@ -493,10 +440,10 @@ PM Agent 在 Claude Code 中运行。关闭终端后 PM 会话会丢失，需要
 claude
 
 # 3. 重新执行 PM 监督命令
-/tmuxAI:pm-oversight my-project SPEC: ~/Coding/my-project/project_spec.md
+/tmuxAI:pm-oversight my-project 继续监督开发进度
 ```
 
-**注意**: PM 重启后会重新阅读 Spec，从头开始监督流程。如果 Engineer 已经完成部分工作，PM 会在检查时发现并跳过已完成的部分。
+**注意**: PM 重启后会从头开始监督流程。如果 Engineer 已经完成部分工作，PM 会在检查时发现并跳过已完成的部分。
 
 ### 脱离会话 (不关闭)
 
@@ -517,7 +464,7 @@ Ctrl+b d          # 脱离 Engineer 会话
 # 方法 1: 在 tmux 中运行 PM
 tmux new -s pm-session
 claude
-/tmuxAI:pm-oversight my-project SPEC: ...
+/tmuxAI:pm-oversight my-project 监督开发任务
 # Ctrl+b d 脱离
 
 # 方法 2: 使用 nohup (不推荐，无法交互)
@@ -571,37 +518,29 @@ fire my-project
 
 ### 场景: 实现用户认证系统
 
-**1. 创建规范**
-
-```bash
-create-spec auth-project
-vim ~/Coding/auth-project/project_spec.md
-```
-
-**2. 启动 Engineer**
+**1. 启动 Engineer**
 
 ```bash
 # 终端 1
 fire auth-project
 ```
 
-**3. 启动 PM**
+**2. 启动 PM**
 
 ```bash
 # 终端 2
 claude
-/tmuxAI:pm-oversight auth-project SPEC: ~/Coding/auth-project/project_spec.md
+/tmuxAI:pm-oversight auth-project 实现用户认证系统
 ```
 
-**4. PM 执行监督**
+**3. PM 执行监督**
 
 PM Agent 会自动：
-- 阅读规范
 - 每 15 分钟检查进度
 - 发现错误时反馈
 - 逐个验收功能
 
-**5. 最终验收**
+**4. 最终验收**
 
 当所有功能完成，PM 会：
 ```bash
@@ -897,13 +836,13 @@ PM Agent 仍在当前会话中，直接发送新指令即可：
 **方式 2: 重新执行斜杠命令**
 
 ```bash
-/tmuxAI:pm-oversight my-project SPEC: ~/Coding/my-project/project_spec.md
+/tmuxAI:pm-oversight my-project 新的任务描述
 ```
 
 这会重新加载完整的 PM 上下文和指令。适用于：
-- 规范文件有更新
 - 需要完全重置 PM 状态
 - PM 上下文丢失
+- 切换到新任务
 
 **方式 3: 使用 PM 槽位命令**
 
@@ -927,7 +866,6 @@ schedule-checkin 30 "检查所有槽位进度"
 | 场景 | 推荐方式 |
 |------|----------|
 | 继续当前项目的后续任务 | 方式 1 或 3 |
-| 规范文件已更新 | 方式 2 |
 | 切换到不同项目 | 方式 2 |
 | 长时间无人值守后继续 | 方式 2 |
 | 快速分配单个任务 | 方式 3 |
@@ -942,7 +880,7 @@ schedule-checkin 30 "检查所有槽位进度"
 claude
 
 # 3. 重新执行 PM 监督命令
-/tmuxAI:pm-oversight my-project SPEC: ~/Coding/my-project/project_spec.md
+/tmuxAI:pm-oversight my-project 继续监督任务
 ```
 
-**注意**: PM 重启后会重新阅读 Spec，从头开始监督流程。已完成的槽位状态（通过 tmux 环境变量保存）会被保留，PM 可以通过 `/tmuxAI:pm-status` 查看。
+**注意**: PM 重启后会从头开始监督流程。已完成的槽位状态（通过 tmux 环境变量保存）会被保留，PM 可以通过 `/tmuxAI:pm-status` 查看。

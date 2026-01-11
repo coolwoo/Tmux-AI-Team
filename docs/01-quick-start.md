@@ -212,7 +212,7 @@ fire my-project
 
 # 终端 2: 启动 PM
 claude
-/tmuxAI:pm-oversight my-project SPEC: ~/Coding/my-project/project_spec.md
+/tmuxAI:pm-oversight my-project 实现用户登录功能
 ```
 
 详见：[PM 监督模式手册](03-pm-oversight-mode.md)

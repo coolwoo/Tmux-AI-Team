@@ -3,9 +3,9 @@
 #
 # 借鉴 Tmux-Orchestrator 最佳实践:
 # - 自调度 (Self-scheduling)
-# - 项目规范文件
 # - 定时 Git 提交
 # - Agent 间通信
+# - PM 槽位管理
 #
 # 安装方法:
 #   cp bashrc-ai-automation-v2.sh ~/.ai-automation.sh
@@ -514,9 +514,7 @@ fire() {
 
     # --auto 模式：发送简报开始工作
     if [ "$auto_start" = true ]; then
-        local spec_note=""
-        [ -f "$project_path/project_spec.md" ] && spec_note="请先阅读 project_spec.md。"
-        local briefing="你负责 $project_name 项目 ($project_type)。$spec_note 请: 1) 分析项目 2) 启动 dev server 3) 检查 issues/TODO 4) 开始工作。Git 规则: 每 30 分钟提交一次。"
+        local briefing="你负责 $project_name 项目 ($project_type)。请: 1) 分析项目 2) 启动 dev server 3) 检查 issues/TODO 4) 开始工作。Git 规则: 每 30 分钟提交一次。"
         tsc -q "$session:Claude" "$briefing"
         echo "✓ 简报已发送"
     fi
@@ -601,81 +599,6 @@ read-next-note() {
     local target="${1:-$(tmux display-message -p '#{session_name}:#{window_name}' 2>/dev/null)}"
     local note_file="/tmp/next_check_note_${target//[:]/_}.txt"
     [ -f "$note_file" ] && cat "$note_file" || echo "无备注"
-}
-
-#===============================================================================
-# 项目规范
-#===============================================================================
-
-# 创建项目规范
-# 支持: 项目名(模糊搜索)、绝对路径、~/路径、./相对路径
-create-spec() {
-    local project_input="$1"
-    [ -z "$project_input" ] && { echo "用法: create-spec <项目名或路径>"; return 1; }
-
-    # 使用统一路径解析
-    local project_path
-    case "$project_input" in
-        /*|"~"|"~"/*|./*)
-            project_path=$(_resolve_project_path "$project_input") || return 1
-            ;;
-        *)
-            _ai_require_deps coding_base || return 1
-            project_path=$(_resolve_project_path "$project_input") || return 1
-            ;;
-    esac
-
-    local project_name
-    project_name="$(basename "$project_path")"
-    local spec_file="$project_path/project_spec.md"
-    
-    [ -f "$spec_file" ] && { echo "规范已存在: $spec_file"; cat "$spec_file"; return 0; }
-    
-    cat > "$spec_file" << EOF
-# 项目规范: $project_name
-
-## 目标
-<!-- 描述项目目标 -->
-
-## 约束条件
-- 遵循现有代码风格
-- 每 30 分钟 Git 提交
-- 为新功能编写测试
-
-## 交付物
-1. <!-- 交付物 1 -->
-2. <!-- 交付物 2 -->
-
-## 成功标准
-- [ ] 测试通过
-- [ ] Lint 通过
-- [ ] 文档更新
-EOF
-
-    echo "✓ 已创建: $spec_file"
-    echo "请编辑此文件添加具体内容"
-}
-
-# 查看项目规范
-# 支持: 项目名(模糊搜索)、绝对路径、~/路径、./相对路径
-view-spec() {
-    local project_input="$1"
-    [ -z "$project_input" ] && project_input=$(tmux display-message -p "#{session_name}" 2>/dev/null)
-
-    # 使用统一路径解析
-    local project_path
-    case "$project_input" in
-        /*|"~"|"~"/*|./*)
-            project_path=$(_resolve_project_path "$project_input") || return 1
-            ;;
-        *)
-            _ai_require_deps coding_base || return 1
-            project_path=$(_resolve_project_path "$project_input") || return 1
-            ;;
-    esac
-
-    local spec_file="$project_path/project_spec.md"
-    [ -f "$spec_file" ] && cat "$spec_file" || echo "无项目规范"
 }
 
 #===============================================================================
@@ -2226,10 +2149,6 @@ _pm_stop_hook() {
 # 自调度:
 #   schedule-checkin 30 "备注"   调度 30 分钟后检查
 #   read-next-note              读取下次检查备注
-#
-# 项目规范:
-#   create-spec <project>       创建项目规范
-#   view-spec [project]         查看项目规范
 #
 # Git 自动提交:
 #   start-auto-commit [session] [分钟]  启动自动提交

@@ -115,7 +115,9 @@ sudo apt install at && sudo systemctl enable --now atd
 | 命令 | 说明 |
 |------|------|
 | `list-agents` | 列出所有 Agent |
-| `send-to-agent <target> <msg>` | 发送消息到指定 Agent |
+| `tsc <target> <msg>` | 发送消息（默认输出确认信息） |
+| `tsc -q <target> <msg>` | 静默模式发送消息 |
+| `send-to-agent` | `tsc` 的别名 |
 | `broadcast <msg>` | 广播到所有 Agent |
 
 ### 自调度与自动提交
@@ -135,13 +137,6 @@ sudo apt install at && sudo systemctl enable --now atd
 | `system-health --save` | 检查并保存日志 |
 | `watch-health [分钟]` | 持续监控 (默认每15分钟) |
 | `watch-health 10 my-project` | 监控并向指定会话报告状态 |
-
-### 项目规范
-
-| 命令 | 说明 |
-|------|------|
-| `create-spec <project>` | 创建项目规范文件 |
-| `view-spec [project]` | 查看规范 |
 
 ### 通信协议
 
@@ -205,7 +200,7 @@ sudo apt install at && sudo systemctl enable --now atd
 
 | 命令 | 说明 |
 |------|------|
-| `/tmuxAI:pm-oversight <项目> SPEC: <文件>` | 启动 PM 监督 |
+| `/tmuxAI:pm-oversight <项目> [任务描述]` | 启动 PM 监督 |
 | `/tmuxAI:role-developer <任务>` | Developer 角色 |
 | `/tmuxAI:role-qa <任务>` | QA 角色 |
 | `/tmuxAI:role-devops <任务>` | DevOps 角色 |
@@ -219,31 +214,11 @@ sudo apt install at && sudo systemctl enable --now atd
 ### 1. 启动单个项目
 
 ```bash
-# 创建规范 (推荐)
-create-spec my-project
-
-# 启动
+# 启动项目
 fire my-project
 ```
 
-### 2. 项目规范示例
-
-```markdown
-# 项目规范: my-project
-
-## 目标
-实现用户认证系统
-
-## 交付物
-1. 登录/登出接口
-2. 用户会话管理
-
-## 约束
-- 每 30 分钟提交代码
-- 为新功能编写测试
-```
-
-### 3. 与 Agent 交互
+### 2. 与 Agent 交互
 
 ```bash
 # 发送任务
@@ -256,7 +231,7 @@ check-agent my-project
 schedule-checkin 30 "检查登录功能"
 ```
 
-### 4. 多项目协作
+### 3. 多项目协作
 
 ```bash
 # 启动多个项目（不同终端）
@@ -264,8 +239,11 @@ fire frontend
 fire backend
 
 # 协调
-send-to-agent backend:Claude "请优先完成 /api/auth"
-send-to-agent frontend:Claude "等待 backend API"
+tsc backend:Claude "请优先完成 /api/auth"
+tsc frontend:Claude "等待 backend API"
+
+# 静默模式
+tsc -q backend:Claude "后台消息"
 
 # 广播
 broadcast "准备发布，请提交代码"
@@ -273,7 +251,7 @@ broadcast "准备发布，请提交代码"
 
 > 完整指南见 [多项目模式手册](docs/02-multi-project-mode.md)
 
-### 5. PM 监督模式
+### 4. PM 监督模式
 
 ```bash
 # 终端 1: 启动 Engineer
@@ -281,7 +259,7 @@ fire my-project
 
 # 终端 2: 启动 PM
 claude
-/tmuxAI:pm-oversight my-project SPEC: ~/Coding/my-project/project_spec.md
+/tmuxAI:pm-oversight my-project 实现用户认证系统
 ```
 
 > 完整指南见 [PM 监督模式手册](docs/03-pm-oversight-mode.md)

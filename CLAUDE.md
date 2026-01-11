@@ -186,7 +186,7 @@ flowchart LR
 
 | 模块 | 路径 | 说明 |
 |------|------|------|
-| 核心函数库 | [`bashrc-ai-automation-v2.sh`](bashrc-ai-automation-v2.sh) | 所有 Bash 函数定义 (约 2100 行) |
+| 核心函数库 | [`bashrc-ai-automation-v2.sh`](bashrc-ai-automation-v2.sh) | 所有 Bash 函数定义 (约 2300 行) |
 | Agent 上下文 | [`.claude/TMUX_AI.md`](.claude/TMUX_AI.md) | fire 启动时复制到目标项目 |
 | 斜杠命令 | [`.claude/commands/tmuxAI/`](.claude/commands/tmuxAI/) | PM、团队部署、角色命令 (13 个) |
 | 专家 Agents | [`.claude/agents/`](.claude/agents/) | 后端架构、代码搜索等专家 (12 个) |
@@ -298,13 +298,22 @@ graph LR
 
 ### 消息发送 (tsc)
 
-处理 Claude Code 的软回车问题，需要两次 Enter：
+处理 Claude Code 的软回车问题，需要两次 Enter。已合并 `send-to-agent` 功能：
 
 ```bash
+# 用法
+tsc <target> <message>      # 发送消息（默认输出确认信息）
+tsc -q <target> <message>   # 静默模式（不输出确认信息）
+
+# send-to-agent 现在是 tsc 的别名
+send-to-agent               # → 调用 tsc
+
+# 内部实现
 tsc() {
     tmux send-keys -t "$target" "$message" C-m
     sleep $delay
     tmux send-keys -t "$target" Enter  # 第二次 Enter
+    [[ "$quiet" != true ]] && echo "✓ 已发送到 $target"
 }
 ```
 

@@ -170,11 +170,14 @@ fire backend
 fire mobile
 
 # 协调工作
-send-to-agent frontend:Claude "请等待 backend API 完成"
-send-to-agent backend:Claude "请优先完成用户认证接口"
+tsc frontend:Claude "请等待 backend API 完成"
+tsc backend:Claude "请优先完成用户认证接口"
+
+# 静默模式（不输出确认信息）
+tsc -q frontend:Claude "后台消息"
 ```
 
-详见 [多项目模式手册](docs/multi-project-mode.md)
+详见 [多项目模式手册](docs/02-multi-project-mode.md)
 
 ### PM 监督模式
 
@@ -186,7 +189,7 @@ fire my-project
 
 # 终端 2: 启动 PM Agent
 claude
-/tmuxAI:pm-oversight my-project SPEC: ~/Coding/my-project/project_spec.md
+/tmuxAI:pm-oversight my-project 实现用户认证系统
 ```
 
 **v3.4 新增**: PM 槽位管理，支持同时管理 3 个工作槽位：
@@ -209,7 +212,9 @@ claude
 | `check-deps` | 检查依赖并显示安装建议 |
 | `fire <project>` | 快速启动项目 |
 | `add-window <name>` | 按需创建窗口 (如 Shell、Server) |
-| `tsc <target> <msg>` | 发送消息到 Claude |
+| `tsc <target> <msg>` | 发送消息到 Claude（默认输出确认信息） |
+| `tsc -q <target> <msg>` | 静默模式发送消息 |
+| `send-to-agent` | `tsc` 的别名 |
 | `check-agent [session]` | 查看 Agent 状态 |
 | `monitor-snapshot [session]` | 生成监控快照 |
 | `list-agents` | 列出所有 Agent |
@@ -316,20 +321,19 @@ Tmux-AI-Team/
 ├── CLAUDE.md                      # Claude Code 项目指南
 ├── bashrc-ai-automation-v2.sh     # Bash 函数 (核心)
 ├── AI-Project-Automation-Manual-v2.md  # 用户手册
-├── .claude/commands/tmuxAI/       # Claude Code 斜杠命令
-│   ├── pm-oversight.md            # PM 监督模式
-│   ├── pm-init.md                 # PM 初始化槽位 (v3.4)
-│   ├── pm-assign.md               # PM 分配任务 (v3.4)
-│   ├── pm-status.md               # PM 状态面板 (v3.4)
-│   ├── pm-check.md                # PM 智能检测 (v3.4)
-│   ├── pm-mark.md                 # PM 标记状态 (v3.4)
-│   ├── pm-broadcast.md            # PM 广播消息 (v3.4)
-│   ├── pm-history.md              # PM 操作历史 (v3.4)
-│   ├── deploy-team.md             # 团队部署
-│   ├── role-developer.md          # Developer 角色
-│   ├── role-qa.md                 # QA 角色
-│   ├── role-devops.md             # DevOps 角色
-│   └── role-reviewer.md           # Reviewer 角色
+├── .claude/
+│   ├── TMUX_AI.md                 # Agent 上下文模板 (自包含，217行)
+│   └── commands/tmuxAI/           # Claude Code 斜杠命令
+│       ├── pm-oversight.md        # PM 监督模式
+│       ├── pm-*.md                # PM 槽位管理命令 (7个)
+│       ├── deploy-team.md         # 团队部署
+│       └── role-*.md              # 角色命令 (4个)
+├── tests/                         # 测试套件
+│   ├── check-syntax.sh            # 语法检查
+│   ├── check-functions.sh         # 函数存在性
+│   ├── check-files.sh             # 文件完整性
+│   └── unit/                      # 单元测试
+│       └── test-slot-design.sh    # 槽位设计验证 (44测试点)
 └── docs/                          # 详细文档
     ├── 01-quick-start.md          # 快速开始
     ├── 02-multi-project-mode.md   # 多项目模式手册
