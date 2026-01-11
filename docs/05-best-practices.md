@@ -4,6 +4,160 @@
 
 ---
 
+## PM 监督模式最佳实践 (推荐)
+
+PM 监督模式是本工具包的核心使用方式，让 AI 项目经理自动监督开发 Agent。
+
+### 1. 槽位管理
+
+#### 按需创建槽位
+
+```bash
+# 初始化默认槽位
+/tmuxAI:pm-init                    # 创建 dev-1
+
+# 根据任务需要动态添加
+pm-add-slot dev-2                  # 添加第二个开发槽位
+pm-add-slot qa                     # 添加 QA 槽位
+```
+
+#### 保持槽位精简
+
+```bash
+# ✅ 正确: 任务完成后清理空闲槽位
+pm-remove-slot dev-2
+
+# ❌ 错误: 保留大量空闲槽位
+# （浪费资源，增加管理复杂度）
+```
+
+### 2. 任务分配
+
+#### 明确任务描述
+
+```bash
+# ✅ 正确: 具体、可验证的任务
+/tmuxAI:pm-assign dev-1 role-developer "实现用户登录 API，包含 JWT 认证和密码加密"
+
+# ❌ 错误: 模糊的任务
+/tmuxAI:pm-assign dev-1 role-developer "做一些改进"
+```
+
+#### 合理分配并行任务
+
+```bash
+# ✅ 正确: 独立任务可并行
+/tmuxAI:pm-assign dev-1 role-developer "实现用户 API"
+/tmuxAI:pm-assign dev-2 role-developer "实现订单 API"
+
+# ❌ 错误: 有依赖的任务并行
+# dev-2 依赖 dev-1 的接口，会导致阻塞
+```
+
+### 3. 状态监控
+
+#### 定期检查状态面板
+
+```bash
+# 查看所有槽位状态
+/tmuxAI:pm-status
+
+# 智能检测特定槽位
+/tmuxAI:pm-check dev-1
+```
+
+#### 关注状态标记
+
+Agent 会输出状态标记，PM 应关注：
+
+```
+[STATUS:DONE]     → 任务完成，可验收
+[STATUS:ERROR]    → 遇到错误，需介入
+[STATUS:BLOCKED]  → 被阻塞，需协调
+[STATUS:PROGRESS] → 进度更新，仅供参考
+```
+
+### 4. 沟通协调
+
+#### 使用广播通知重要信息
+
+```bash
+# ✅ 正确: 重要通知使用广播
+/tmuxAI:pm-broadcast "准备发布 v1.0，请完成当前任务并提交"
+
+# ❌ 错误: 频繁广播琐碎信息
+/tmuxAI:pm-broadcast "我去喝杯咖啡"
+```
+
+#### 及时响应阻塞
+
+```bash
+# Agent 报告阻塞后，PM 应：
+# 1. 查看阻塞原因
+/tmuxAI:pm-check dev-1
+
+# 2. 协调解决或重新分配
+tsc Tmux-AI-Team:dev-1 "API 文档已更新，请继续"
+```
+
+### 5. Hook 配置
+
+#### 启用自动状态推送
+
+在项目 `.claude/settings.json` 中配置 Stop Hook：
+
+```json
+{
+  "hooks": {
+    "Stop": [{
+      "type": "command",
+      "command": "bash -c 'source ~/.ai-automation.sh && _pm_stop_hook'",
+      "timeout": 10000
+    }]
+  }
+}
+```
+
+这样 Agent 完成任务后会自动通知 PM，无需手动轮询。
+
+### 6. 验收流程
+
+#### 完整验收清单
+
+```bash
+# 1. 检查状态
+/tmuxAI:pm-check dev-1
+
+# 2. 查看输出
+pm-get-output dev-1 100
+
+# 3. 验证功能（根据任务要求）
+# 4. 标记完成
+pm-mark dev-1 done
+```
+
+#### 发现问题时
+
+```bash
+# 标记错误并重新分配
+pm-mark dev-1 error
+tsc Tmux-AI-Team:dev-1 "测试未通过，请修复：[具体问题]"
+```
+
+### 7. 历史追溯
+
+```bash
+# 查看操作历史
+/tmuxAI:pm-history
+
+# 用于：
+# - 回溯问题原因
+# - 分析任务耗时
+# - 优化工作流程
+```
+
+---
+
 ## 最佳实践
 
 ### 1. Git 规范

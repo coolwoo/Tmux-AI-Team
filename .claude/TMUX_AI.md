@@ -91,6 +91,36 @@ tsc other-project:Claude "消息内容"
 send-status pm:Claude <role> "<completed>" "<current>"
 ```
 
+## Claude 快捷命令
+
+| 命令 | 说明 |
+|------|------|
+| `cld` | 快速模式：`--dangerously-skip-permissions`，跳过权限确认 |
+| `clf` | 全功能模式：`--dangerously-skip-permissions` + MCP 配置 + IDE 模式 |
+
+```bash
+cld              # 快速启动，跳过权限确认
+clf              # 全功能模式，自动加载 MCP 配置
+```
+
+**MCP 配置**: `clf` 会自动向上查找 `.claude/mcp/mcp_servers.json`。需要在项目中创建此文件：
+
+```bash
+mkdir -p .claude/mcp
+```
+
+配置示例 (`.claude/mcp/mcp_servers.json`):
+```json
+{
+  "mcpServers": {
+    "playwright": {
+      "command": "npx",
+      "args": ["@playwright/mcp@latest"]
+    }
+  }
+}
+```
+
 ## 环境配置
 
 环境变量（在 `~/.bashrc` 中设置）：

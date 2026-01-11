@@ -84,11 +84,11 @@ fire mobile
 # 在同一终端启动多个项目（不附加）
 # 先启动第一个项目
 fire frontend
-# 按 Ctrl+b d 脱离会话
+# 按 <prefix> d 脱离会话（默认 Ctrl+b d）
 
 # 启动第二个项目
 fire backend
-# 按 Ctrl+b d 脱离会话
+# 按 <prefix> d 脱离会话
 
 # 启动第三个项目
 fire mobile
@@ -444,17 +444,19 @@ tmux attach -t frontend
 
 ```bash
 # 在 tmux 内切换到另一个会话
-Ctrl+b s           # 显示会话列表，用方向键选择
-Ctrl+b )           # 切换到下一个会话
-Ctrl+b (           # 切换到上一个会话
+<prefix> s         # 显示会话列表，用方向键选择
+<prefix> )         # 切换到下一个会话
+<prefix> (         # 切换到上一个会话
 ```
 
 ### 脱离会话 (不关闭)
 
 ```bash
 # 在 tmux 内，脱离当前会话返回普通终端
-Ctrl+b d
+<prefix> d
 ```
+
+> **tmux 前缀键**: `<prefix>` 默认是 `Ctrl+b`，可在 `~/.tmux.conf` 中自定义。
 
 脱离后 Agent 继续在后台运行，你可以稍后用 `goto` 重新进入。
 

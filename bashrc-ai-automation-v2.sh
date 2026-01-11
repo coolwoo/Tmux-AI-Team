@@ -20,6 +20,56 @@ export DEFAULT_DELAY="${DEFAULT_DELAY:-1}"
 export TMUX_AI_TEAM_DIR="${TMUX_AI_TEAM_DIR:-$HOME/Coding/Tmux-AI-Team}"
 
 #===============================================================================
+# Claude 快捷命令
+#===============================================================================
+
+# 查找最近的 mcp_servers.json (向上遍历目录)
+__claude_find_mcp() {
+    local dir="$PWD"
+    while [[ "$dir" != "/" ]]; do
+        if [[ -f "$dir/.claude/mcp/mcp_servers.json" ]]; then
+            echo "$dir/.claude/mcp/mcp_servers.json"
+            return 0
+        fi
+        dir="$(dirname "$dir")"
+    done
+    return 1
+}
+
+# clf - Claude Code 全功能模式
+# 自动加载 MCP 配置，启用 IDE 模式
+# 用法: clf [additional_args]
+clf() {
+    local mcp
+    mcp="$(__claude_find_mcp)"
+
+    if [[ -n "$mcp" ]]; then
+        claude \
+            --ide \
+            --dangerously-skip-permissions \
+            --model opus \
+            --mcp-config "$mcp" \
+            "$@"
+    else
+        echo "[clf] warning: mcp_servers.json not found, running without --mcp-config" >&2
+        claude \
+            --ide \
+            --dangerously-skip-permissions \
+            --model opus \
+            "$@"
+    fi
+}
+
+# cld - Claude Code 快速模式
+# 用法: cld [additional_args]
+cld() {
+    claude \
+        --dangerously-skip-permissions \
+        --model opus \
+        "$@"
+}
+
+#===============================================================================
 # 环境自检
 #===============================================================================
 

@@ -246,6 +246,43 @@ bash tests/unit/test-slot-design.sh  # 槽位设计验证 (44 测试点)
 
 ## 关键函数
 
+### Claude 快捷命令
+
+| 命令 | 说明 | 用途 |
+|------|------|------|
+| `cld` | `--dangerously-skip-permissions` 模式 | 快速启动，跳过权限确认 |
+| `clf` | `--dangerously-skip-permissions` + MCP | 全功能模式，加载 MCP 配置 |
+
+```bash
+# 快速模式 - 跳过权限确认
+cld
+
+# 全功能模式 - 加载 MCP + IDE 模式
+clf
+
+# 等价于
+claude --dangerously-skip-permissions --model opus              # cld
+claude --dangerously-skip-permissions --model opus --ide --mcp-config ...  # clf
+```
+
+**MCP 配置**: `clf` 会自动向上查找 `.claude/mcp/mcp_servers.json`。需要在项目中创建此文件：
+
+```bash
+mkdir -p .claude/mcp
+```
+
+配置示例 (`.claude/mcp/mcp_servers.json`):
+```json
+{
+  "mcpServers": {
+    "playwright": {
+      "command": "npx",
+      "args": ["@playwright/mcp@latest"]
+    }
+  }
+}
+```
+
 ### 函数分类概览
 
 ```mermaid

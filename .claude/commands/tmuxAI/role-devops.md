@@ -206,6 +206,17 @@ INCIDENT ALERT [DevOps → Team]
 - PM 会通过 `/tmuxAI:pm-check` 读取你的状态
 - 失败时使用 `[STATUS:ERROR]`，等待条件用 `[STATUS:BLOCKED]`
 
+## Claude 快捷命令
+
+如需在其他窗口启动 Claude：
+
+| 命令 | 说明 |
+|------|------|
+| `cld` | 快速模式：`--dangerously-skip-permissions`，跳过权限确认 |
+| `clf` | 全功能模式：`--dangerously-skip-permissions` + MCP + IDE 模式 |
+
+> **MCP 配置**: `clf` 需要项目中存在 `.claude/mcp/mcp_servers.json` 配置文件。
+
 ## 开始工作
 
 1. 了解当前基础设施状态

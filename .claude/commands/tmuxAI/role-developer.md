@@ -169,6 +169,17 @@ REVIEW RESPONSE [Developer → Reviewer]
 - PM 会通过 `/tmuxAI:pm-check` 读取你的状态
 - 如果需要帮助，使用 `[STATUS:BLOCKED]` 并说明原因
 
+## Claude 快捷命令
+
+如需在其他窗口启动 Claude：
+
+| 命令 | 说明 |
+|------|------|
+| `cld` | 快速模式：`--dangerously-skip-permissions`，跳过权限确认 |
+| `clf` | 全功能模式：`--dangerously-skip-permissions` + MCP + IDE 模式 |
+
+> **MCP 配置**: `clf` 需要项目中存在 `.claude/mcp/mcp_servers.json` 配置文件。
+
 ## 开始工作
 
 1. 分析任务需求

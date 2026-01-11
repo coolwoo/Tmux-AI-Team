@@ -161,16 +161,33 @@ add-window Server  # 创建 Server 窗口
 
 | 快捷键 | 作用 |
 |--------|------|
-| `Ctrl+b d` | 脱离会话（Agent 继续运行） |
-| `Ctrl+b 1/2/3` | 切换到窗口（编号取决于 tmux `base-index` 配置） |
-| `Ctrl+b n` | 下一个窗口 |
-| `Ctrl+b p` | 上一个窗口 |
+| `<prefix> d` | 脱离会话（Agent 继续运行） |
+| `<prefix> 1/2/3` | 切换到窗口（编号取决于 tmux `base-index` 配置） |
+| `<prefix> n` | 下一个窗口 |
+| `<prefix> p` | 上一个窗口 |
+
+> **关于 tmux 前缀键**: `<prefix>` 默认是 `Ctrl+b`，但可在 `~/.tmux.conf` 中自定义（常见替代：`Ctrl+a`）。查看当前前缀：`tmux show-options -g prefix`
 
 > **注意**: 脚本使用窗口名称（如 Claude）引用窗口，不受 `base-index` 影响。
 
 ---
 
 ## 5. 选择使用模式
+
+### PM 监督模式 (推荐)
+
+AI 项目经理自动监督 Engineer Agent，适合无人值守。
+
+```bash
+# 终端 1: 启动 Engineer
+fire my-project
+
+# 终端 2: 启动 PM
+claude
+/tmuxAI:pm-oversight my-project 实现用户登录功能
+```
+
+详见：[PM 监督模式手册](03-pm-oversight-mode.md)
 
 ### 单项目模式
 
@@ -182,7 +199,9 @@ fire my-project
 
 详见：[多项目模式手册](02-multi-project-mode.md)（单项目是其子集）
 
-### 多项目模式
+### 多项目模式 (实验性)
+
+> **注意**: 此模式尚未经过严格测试，建议优先使用 PM 监督模式。
 
 同时管理多个 Agent，你作为协调者。
 
@@ -202,24 +221,34 @@ tsc frontend:Claude "请实现登录页面"
 
 详见：[多项目模式手册](02-multi-project-mode.md)
 
-### PM 监督模式
-
-AI 项目经理自动监督 Engineer Agent，适合无人值守。
-
-```bash
-# 终端 1: 启动 Engineer
-fire my-project
-
-# 终端 2: 启动 PM
-claude
-/tmuxAI:pm-oversight my-project 实现用户登录功能
-```
-
-详见：[PM 监督模式手册](03-pm-oversight-mode.md)
-
 ---
 
 ## 6. 常用命令速查
+
+### Claude 快捷命令
+
+| 命令 | 说明 |
+|------|------|
+| `cld` | 快速模式：`--dangerously-skip-permissions`，跳过权限确认 |
+| `clf` | 全功能模式：`--dangerously-skip-permissions` + MCP + IDE 模式 |
+
+**MCP 配置**: `clf` 会自动向上查找 `.claude/mcp/mcp_servers.json`。需要在项目中创建此文件：
+
+```bash
+mkdir -p .claude/mcp
+```
+
+配置示例 (`.claude/mcp/mcp_servers.json`):
+```json
+{
+  "mcpServers": {
+    "playwright": {
+      "command": "npx",
+      "args": ["@playwright/mcp@latest"]
+    }
+  }
+}
+```
 
 ### 会话管理
 
@@ -266,9 +295,52 @@ goto my-project
 
 ---
 
-## 8. 下一步
+## 8. 多设备同步
 
-- 阅读 [多项目模式手册](02-multi-project-mode.md) 了解高级用法
-- 阅读 [PM 监督模式手册](03-pm-oversight-mode.md) 实现无人值守
+基于 tmux 的会话持久化特性，你可以从任意设备连接到同一个开发环境：
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    开发服务器 (Linux/WSL)                        │
+│  ┌─────────────────────────────────────────────────────────┐    │
+│  │                   tmux 会话持久化                         │    │
+│  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐      │    │
+│  │  │ my-project  │  │  backend    │  │  frontend   │      │    │
+│  │  │ 🤖 Claude   │  │ 🤖 Claude   │  │ 🤖 Claude   │      │    │
+│  │  └─────────────┘  └─────────────┘  └─────────────┘      │    │
+│  └─────────────────────────────────────────────────────────┘    │
+└─────────────────────────────────────────────────────────────────┘
+          ▲                    ▲                    ▲
+          │ SSH                │ SSH                │ SSH
+          │                    │                    │
+    ┌─────┴─────┐        ┌─────┴─────┐        ┌─────┴─────┐
+    │    📱     │        │    💻     │        │    📱     │
+    │   手机    │        │    PC     │        │   平板    │
+    │  (监控)   │        │  (主操作) │        │  (监控)   │
+    └───────────┘        └───────────┘        └───────────┘
+```
+
+**使用场景**：
+- 在 PC 上启动 Agent 执行任务
+- 离开工位后用手机查看进度
+- 在平板上处理紧急问题
+
+**连接方式**：
+```bash
+# 从任意设备 SSH 连接到开发服务器
+ssh user@dev-server
+
+# 附加到已有的 tmux 会话
+goto my-project
+```
+
+> **⚠️ 重要提示**: 虽然支持多设备同时连接，但**建议只在一个设备上进行操作**，其他设备仅用于监控。多人同时操作可能导致消息冲突和状态不一致。
+
+---
+
+## 9. 下一步
+
+- 阅读 [PM 监督模式手册](03-pm-oversight-mode.md) 实现无人值守 ⭐ 推荐
+- 阅读 [Agent 角色说明](04-agent-roles.md) 了解斜杠命令
 - 阅读 [最佳实践](05-best-practices.md) 提升使用效率
-- 查看 [Agent 角色说明](04-agent-roles.md) 了解斜杠命令
+- 阅读 [多项目模式手册](02-multi-project-mode.md) 了解高级用法 (实验性)

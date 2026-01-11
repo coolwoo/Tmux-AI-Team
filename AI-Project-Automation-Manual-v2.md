@@ -291,10 +291,12 @@ export DEFAULT_DELAY="1"             # 消息延迟(秒)
 
 | 快捷键 | 功能 |
 |--------|------|
-| `Ctrl+b d` | 脱离会话 |
-| `Ctrl+b 0/1/2` | 切换窗口 |
-| `Ctrl+b w` | 窗口列表 |
-| `Ctrl+b s` | 会话列表 |
+| `<prefix> d` | 脱离会话 |
+| `<prefix> 0/1/2` | 切换窗口 |
+| `<prefix> w` | 窗口列表 |
+| `<prefix> s` | 会话列表 |
+
+> **tmux 前缀键**: `<prefix>` 默认是 `Ctrl+b`，可在 `~/.tmux.conf` 中自定义（常见替代：`Ctrl+a`）。查看当前前缀：`tmux show-options -g prefix`
 
 ---
 

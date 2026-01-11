@@ -451,10 +451,12 @@ claude
 
 ```bash
 # 在 tmux 会话内
-Ctrl+b d          # 脱离 Engineer 会话
+<prefix> d        # 脱离 Engineer 会话（默认 Ctrl+b d）
 
 # PM 终端保持打开，或使用 screen/tmux 包装
 ```
+
+> **tmux 前缀键**: `<prefix>` 默认是 `Ctrl+b`，可在 `~/.tmux.conf` 中自定义。
 
 ### 长时间运行建议
 
@@ -465,7 +467,7 @@ Ctrl+b d          # 脱离 Engineer 会话
 tmux new -s pm-session
 claude
 /tmuxAI:pm-oversight my-project 监督开发任务
-# Ctrl+b d 脱离
+# <prefix> d 脱离
 
 # 方法 2: 使用 nohup (不推荐，无法交互)
 ```
