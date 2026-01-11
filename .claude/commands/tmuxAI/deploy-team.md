@@ -50,11 +50,9 @@ my-project medium SPEC: "docs/project spec.md"
 │  Developer  │
 └─────────────┘
 
-窗口配置:
-- Window 0: Developer (Claude Agent)
-- Window 1: Shell
-- Window 2: Server
-- Window 3: PM (可选，或由 Orchestrator 兼任)
+槽位配置:
+- dev-1: Developer (Claude Agent)
+- Shell/Server: 按需创建
 ```
 
 ### 中型项目 (Medium)
@@ -74,12 +72,10 @@ my-project medium SPEC: "docs/project spec.md"
 │ Dev 1 │  │  QA  │
 └───────┘  └──────┘
 
-窗口配置:
-- Window 0: Developer
-- Window 1: Shell
-- Window 2: Server
-- Window 3: QA
-- Window 4: PM
+槽位配置:
+- dev-1: Developer
+- qa: QA Engineer
+- Shell/Server: 按需创建
 ```
 
 ### 大型项目 (Large)
@@ -104,17 +100,13 @@ my-project medium SPEC: "docs/project spec.md"
     ┌─────▼─────┐
     │    QA     │
     └───────────┘
-    ┌───────────┐
-    │ Reviewer  │ (按需)
-    └───────────┘
 
-窗口配置:
-- Window 0: Lead Developer
-- Window 1: Developer 2
-- Window 2: Server
-- Window 3: QA
-- Window 4: DevOps
-- Window 5: PM
+槽位配置:
+- dev-1: Lead Developer
+- dev-2: Developer 2
+- qa: QA Engineer
+- devops: DevOps (按需)
+- Shell/Server: 按需创建
 ```
 
 ## 部署流程
@@ -130,30 +122,31 @@ wc -l $(find ~/Coding/<project> -name "*.py" -o -name "*.js" -o -name "*.ts" 2>/
 cat ~/Coding/<project>/project_spec.md 2>/dev/null
 ```
 
-### 2. 创建 tmux 会话
+### 2. 初始化 PM 槽位
 
 ```bash
-# 创建会话
-tmux new-session -d -s <project> -c ~/Coding/<project> -n "Developer"
+# 初始化槽位管理
+pm-init-slots
 
-# 添加窗口
-tmux new-window -t <project> -n "Shell"
-tmux new-window -t <project> -n "Server"
-# ... 根据团队规模添加更多窗口
+# 根据团队规模添加槽位
+pm-add-slot dev-2   # 中型/大型项目
+pm-add-slot qa      # 中型/大型项目
+pm-add-slot devops  # 大型项目
+
+# 按需创建辅助窗口
+add-window Shell
+add-window Server
 ```
 
-### 3. 启动各角色 Agent
+### 3. 分配任务到槽位
 
 ```bash
-# 启动 Developer
-tmux send-keys -t <project>:Developer "claude" Enter
-sleep 5
-# 发送角色简报...
+# 分配开发任务
+pm-assign dev-1 role-developer "实现核心功能"
+pm-assign dev-2 role-developer "实现辅助模块"  # 中型/大型
 
-# 启动 QA (如果需要)
-tmux send-keys -t <project>:QA "claude" Enter
-sleep 5
-# 发送角色简报...
+# 分配测试任务
+pm-assign qa role-qa "测试功能完整性"  # 中型/大型
 ```
 
 ### 4. 建立通信
@@ -165,50 +158,45 @@ sleep 5
 
 ## 角色简报模板
 
-### Developer 简报
-```
-你是 <project> 项目的开发工程师。
-职责: 实现功能、修复 Bug、编写测试
-汇报对象: PM (Window X)
-协作: QA (Window Y) - 提交验证请求
+> 注意: 使用 `pm-assign` 时会自动加载角色并发送任务，无需手动发送简报。
 
-请先阅读 project_spec.md 了解任务要求。
+### Developer 角色 (role-developer)
+```
+职责: 实现功能、修复 Bug、编写测试
+汇报: 使用 [STATUS:DONE/ERROR/BLOCKED] 标记汇报状态
+协作: 通过 tsc 与其他槽位通信
+
 Git 规则: 每 30 分钟提交一次。
 ```
 
-### QA 简报
+### QA 角色 (role-qa)
 ```
-你是 <project> 项目的 QA 工程师。
 职责: 测试功能、发现 Bug、验证修复
-汇报对象: PM (Window X)
-协作: Developer (Window Y) - 报告 Bug
+汇报: 使用 [STATUS:DONE/ERROR/BLOCKED] 标记汇报状态
+协作: 通过 tsc 向开发槽位报告 Bug
 
-请等待 Developer 完成功能后进行测试。
 使用标准 BUG 报告格式汇报问题。
 ```
 
-### PM 简报
+### PM 监督
 ```
-你是 <project> 项目的项目经理。
-职责: 协调团队、跟踪进度、质量把控
-团队成员:
-- Developer: Window 0
-- QA: Window 3
-
-请监控团队进度，确保按规范交付。
-定期向 Orchestrator 汇报状态。
+使用 /tmuxAI:pm-oversight 或 /tmuxAI:pm-status 监控团队。
+- pm-status: 查看所有槽位状态
+- pm-check <slot>: 检测槽位完成状态
+- pm-broadcast: 向工作中的槽位广播消息
 ```
 
 ## 执行部署
 
 根据分析结果，执行以下步骤：
 
-1. 确定团队规模
-2. 创建 tmux 会话和窗口
-3. 启动各角色 Agent
-4. 发送角色简报
-5. 确认团队就绪
-6. 开始项目工作
+1. 确定团队规模 (small/medium/large)
+2. 初始化 PM 槽位 (`pm-init-slots`)
+3. 根据规模添加额外槽位 (`pm-add-slot`)
+4. 分配任务到槽位 (`pm-assign`)
+5. 按需创建辅助窗口 (`add-window Shell/Server`)
+6. 确认团队就绪 (`pm-status`)
+7. 开始项目工作
 
 ---
 

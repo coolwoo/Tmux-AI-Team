@@ -10,7 +10,7 @@ allowedTools: ["Bash"]
 ## 参数
 
 从 `$ARGUMENTS` 解析：
-- `slot`: 槽位名称 (dev-1 | dev-2 | qa)
+- `slot`: 槽位名称（使用 `pm-list-slots` 查看可用槽位）
 
 ## 执行步骤
 

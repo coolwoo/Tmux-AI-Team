@@ -10,7 +10,7 @@ allowedTools: ["Bash"]
 ## 参数
 
 从 `$ARGUMENTS` 解析以下参数：
-- `slot`: 槽位名称 (dev-1 | dev-2 | qa)
+- `slot`: 槽位名称（使用 `pm-list-slots` 查看可用槽位）
 - `role`: 角色命令 (role-developer | role-qa | role-reviewer | role-devops)
 - `task`: 任务描述
 

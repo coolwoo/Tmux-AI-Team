@@ -11,16 +11,20 @@
 ```mermaid
 graph TB
     subgraph PMSlots["🎯 PM 槽位管理 (v3.5)"]
-        INIT["pm-init.md<br/>初始化槽位"]
-        ASSIGN["pm-assign.md<br/>分配任务"]
-        STATUS["pm-status.md<br/>状态面板"]
-        CHECK["pm-check.md<br/>智能检测"]
-        MARK["pm-mark.md<br/>标记状态"]
-        BROADCAST["pm-broadcast.md<br/>广播消息"]
-        HISTORY["pm-history.md<br/>操作历史"]
-        ADD["pm-add-slot<br/>添加槽位"]
-        REMOVE["pm-remove-slot<br/>删除槽位"]
-        LIST["pm-list-slots<br/>列出槽位"]
+        subgraph SlashCmds["斜杠命令 (.md)"]
+            INIT["pm-init.md<br/>初始化槽位"]
+            ASSIGN["pm-assign.md<br/>分配任务"]
+            STATUS["pm-status.md<br/>状态面板"]
+            CHECK["pm-check.md<br/>智能检测"]
+            MARK["pm-mark.md<br/>标记状态"]
+            BROADCAST["pm-broadcast.md<br/>广播消息"]
+            HISTORY["pm-history.md<br/>操作历史"]
+        end
+        subgraph BashFuncs["Bash 函数"]
+            ADD["pm-add-slot()"]
+            REMOVE["pm-remove-slot()"]
+            LIST["pm-list-slots()"]
+        end
     end
 
     subgraph Management["📋 管理命令"]
@@ -64,8 +68,19 @@ graph TB
 | 添加槽位 | `pm-add-slot <name>` | 动态添加新槽位 |
 | 删除槽位 | `pm-remove-slot <name>` | 删除槽位并关闭窗口 |
 | 列出槽位 | `pm-list-slots` | 显示当前槽位列表 |
+| 添加窗口 | `add-window <name>` | 按需创建辅助窗口 (Shell/Server) |
 
 > **注意**: `pm-remove-slot` 对工作中的槽位有保护机制，使用 `--force` 会先通知 Agent 再关闭。
+
+### 结果获取命令 (v3.5 新增)
+
+| 命令 | Bash 函数 | 用途 |
+|------|-----------|------|
+| 获取输出 | `pm-get-output <slot> [lines]` | 获取槽位窗口输出 |
+| 等待结果 | `pm-wait-result <slot> [timeout]` | 等待 Agent 完成并获取结果 |
+| 发送并等待 | `pm-send-and-wait <slot> <msg> [timeout]` | 发送消息并等待结果 |
+
+> **提示**: `pm-send-and-wait` 是最常用的函数，自动轮询检测 Agent 是否完成。
 
 ### 原有命令
 
