@@ -387,11 +387,16 @@ _wait_for_claude() {
 #===============================================================================
 
 # 发送消息到 Claude Code (处理软回车问题)
-# 用法: tsc <target> <message>
+# 用法: tsc [-q] <target> <message>
+# 选项: -q 静默模式（不输出确认信息）
 tsc() {
+    local quiet=false
+    [ "$1" = "-q" ] && { quiet=true; shift; }
+
     if [ $# -lt 2 ]; then
-        echo "用法: tsc <target> <message>"
-        echo "示例: tsc dev:main 'hello'"
+        echo "用法: tsc [-q] <target> <message>"
+        echo "示例: tsc my-project:Claude 'hello'"
+        echo "选项: -q 静默模式"
         return 1
     fi
     local target="$1"
@@ -399,6 +404,8 @@ tsc() {
     tmux send-keys -t "$target" "$*" C-m
     sleep "${TSC_DELAY:-$DEFAULT_DELAY}"
     tmux send-keys -t "$target" Enter
+
+    $quiet || echo "✓ 消息已发送到 $target"
 }
 
 # 快速启动项目
@@ -510,8 +517,8 @@ fire() {
         local spec_note=""
         [ -f "$project_path/project_spec.md" ] && spec_note="请先阅读 project_spec.md。"
         local briefing="你负责 $project_name 项目 ($project_type)。$spec_note 请: 1) 分析项目 2) 启动 dev server 3) 检查 issues/TODO 4) 开始工作。Git 规则: 每 30 分钟提交一次。"
-        tsc "$session:Claude" "$briefing"
-        echo "✓ 简报已发送!"
+        tsc -q "$session:Claude" "$briefing"
+        echo "✓ 简报已发送"
     fi
 
     echo "✓ 会话已就绪"
@@ -578,13 +585,13 @@ schedule-checkin() {
             echo "⚠ atd 服务未运行，at 命令可能不会执行"
             echo "  → $(_ai_install_hint atd)"
         fi
-        echo "tsc '$target' '继续工作。上次备注: $note'" | at now + "$minutes" minutes 2>/dev/null
+        echo "tsc -q '$target' '继续工作。上次备注: $note'" | at now + "$minutes" minutes 2>/dev/null
         echo "✓ 已调度 ${minutes} 分钟后检查"
     else
         # 备选: 后台 sleep
         echo "⚠ at 未安装，使用后台 sleep (关闭终端会丢失任务)"
         echo "  → $(_ai_install_hint at)"
-        (sleep $((minutes * 60)) && tsc "$target" "继续工作。上次备注: $note") &
+        (sleep $((minutes * 60)) && tsc -q "$target" "继续工作。上次备注: $note") &
         echo "✓ 已调度后台任务 (PID: $!)"
     fi
 }
@@ -895,21 +902,8 @@ find-window() {
 # Agent 间通信 (多 Agent 场景)
 #===============================================================================
 
-# 向指定 Agent 发送消息
-send-to-agent() {
-    local target="$1"
-    shift
-    local message="$*"
-    
-    [ -z "$target" ] || [ -z "$message" ] && {
-        echo "用法: send-to-agent <session:window> <消息>"
-        echo "示例: send-to-agent frontend:Claude '请检查 API 集成'"
-        return 1
-    }
-    
-    tsc "$target" "$message"
-    echo "✓ 消息已发送到 $target"
-}
+# 向指定 Agent 发送消息 (tsc 的别名，保持向后兼容)
+alias send-to-agent='tsc'
 
 # 列出所有 Agent 会话
 list-agents() {
@@ -930,7 +924,7 @@ broadcast() {
         # 跳过非项目会话
         tmux has-session -t "$session:Claude" 2>/dev/null || continue
         echo "发送到: $session"
-        tsc "$session:Claude" "[广播] $message"
+        tsc -q "$session:Claude" "[广播] $message"
     done
 }
 
@@ -962,7 +956,7 @@ send-status() {
 当前: $current
 阻塞: $blocked"
 
-    tsc "$target" "$message"
+    tsc -q "$target" "$message"
     log-message "$target" "STATUS" "$message"
     echo "✓ 状态已发送到 $target"
 }
@@ -987,7 +981,7 @@ send-task() {
 目标: $objective
 请确认收到后回复 ACK"
 
-    tsc "$target" "$message"
+    tsc -q "$target" "$message"
     log-message "$target" "TASK" "$message"
     echo "✓ 任务已分配到 $target"
 }
@@ -1015,7 +1009,7 @@ send-bug() {
 期望结果: $expected
 实际结果: $actual"
 
-    tsc "$target" "$message"
+    tsc -q "$target" "$message"
     log-message "$target" "BUG" "$message"
     echo "✓ Bug 报告已发送到 $target"
 }
@@ -1033,7 +1027,7 @@ send-ack() {
     }
 
     local message="ACK [$task_id] - 已收到，开始执行"
-    tsc "$target" "$message"
+    tsc -q "$target" "$message"
     log-message "$target" "ACK" "$message"
     echo "✓ 确认已发送"
 }
@@ -1056,7 +1050,7 @@ send-done() {
 完成: $summary
 请验收"
 
-    tsc "$target" "$message"
+    tsc -q "$target" "$message"
     log-message "$target" "DONE" "$message"
     echo "✓ 完成通知已发送"
 }
@@ -1082,7 +1076,7 @@ send-blocked() {
 已尝试: $tried
 需要: $need"
 
-    tsc "$target" "$message"
+    tsc -q "$target" "$message"
     log-message "$target" "BLOCKED" "$message"
     echo "✓ 阻塞通知已发送"
 }
@@ -1339,7 +1333,7 @@ watch-health() {
                 1) status="有警告" ;;
                 2) status="有错误" ;;
             esac
-            tsc "$target_session" "[健康监控] 系统状态: $status ($(date '+%H:%M'))"
+            tsc -q "$target_session" "[健康监控] 系统状态: $status ($(date '+%H:%M'))"
         fi
 
         sleep $((interval * 60))
@@ -1591,7 +1585,7 @@ pm-remove-slot() {
 
         # --force: 先通知 Agent，等待后关闭
         echo "→ 向 $slot 发送关闭通知..."
-        tsc "$session:$slot" "[PM 通知] 窗口即将关闭，请保存工作"
+        tsc -q "$session:$slot" "[PM 通知] 窗口即将关闭，请保存工作"
         echo "→ 等待 3 秒..."
         sleep 3
     fi
@@ -1822,11 +1816,11 @@ pm-assign() {
 
     # 加载角色
     echo "加载角色 $role..."
-    tsc "$session:$slot" "/$role"
+    tsc -q "$session:$slot" "/$role"
 
     # 发送任务
     echo "发送任务..."
-    tsc "$session:$slot" "你的任务: $task"
+    tsc -q "$session:$slot" "你的任务: $task"
 
     # 更新状态
     tmux set-environment -t "$session" "${var_prefix}_STATUS" "working"
@@ -1987,7 +1981,7 @@ pm-broadcast() {
         local status=$(tmux show-environment -t "$session" "${var_prefix}_STATUS" 2>/dev/null | cut -d= -f2)
 
         if [[ "$status" == "working" ]]; then
-            tsc "$session:$slot" "[PM 广播] $message"
+            tsc -q "$session:$slot" "[PM 广播] $message"
             echo "→ $slot: 已发送"
             sent_count=$((sent_count + 1))
         fi
@@ -2089,7 +2083,7 @@ pm-send-and-wait() {
     }
 
     echo "📤 发送消息到 $slot..." >&2
-    tsc "$session:$slot" "$message"
+    tsc -q "$session:$slot" "$message"
 
     # 等待 Agent 开始处理
     sleep 2
@@ -2205,7 +2199,7 @@ _pm_stop_hook() {
     if [[ -n "$pm_window" ]]; then
         local notify="[Hook] $slot → $detected_status"
         [[ -n "$detected_message" ]] && notify="$notify: $detected_message"
-        tsc "$session:$pm_window" "$notify"
+        tsc -q "$session:$pm_window" "$notify"
     fi
 
     _pm_log "HOOK" "$slot" "$detected_status: $detected_message"
