@@ -57,7 +57,20 @@ source ~/.bashrc
 mkdir -p $CODING_BASE
 ```
 
-### 2.4 验证安装
+### 2.4 更新工具包
+
+```bash
+# 1. 拉取最新代码
+cd ~/Coding/Tmux-AI-Team && git pull
+
+# 2. 更新函数库
+cp bashrc-ai-automation-v2.sh ~/.ai-automation.sh
+
+# 3. 重新加载（当前终端生效）
+source ~/.ai-automation.sh
+```
+
+### 2.5 验证安装
 
 ```bash
 check-deps

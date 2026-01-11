@@ -66,6 +66,16 @@ send-status pm:Claude Developer "完成登录接口" "实现注册功能"
 3. 阶段性工作完成后用 `schedule-checkin` 安排下次检查
 4. 多 Agent 场景中用 `send-status` 汇报进度
 
+## 更新工具包
+
+如果函数不存在或行为异常，可能需要更新：
+
+```bash
+cd ~/Coding/Tmux-AI-Team && git pull
+cp bashrc-ai-automation-v2.sh ~/.ai-automation.sh
+source ~/.ai-automation.sh
+```
+
 ## 更多功能
 
 完整函数列表运行 `check-deps` 或查看项目文档。

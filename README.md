@@ -43,8 +43,14 @@ source ~/.bashrc
 
 **更新方法：**
 ```bash
-# 直接替换文件即可
+# 1. 进入工具包目录并拉取最新代码
+cd ~/Coding/Tmux-AI-Team && git pull
+
+# 2. 复制到用户目录
 cp bashrc-ai-automation-v2.sh ~/.ai-automation.sh
+
+# 3. 重新加载（当前终端生效）
+source ~/.ai-automation.sh
 ```
 
 **卸载方法：**
