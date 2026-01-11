@@ -518,6 +518,52 @@ fire() {
     tmux attach -t "$session"
 }
 
+# 添加 Shell 窗口
+# 用法: add-shell [name]
+add-shell() {
+    local name="${1:-Shell}"
+    local session=$(tmux display-message -p '#{session_name}' 2>/dev/null)
+
+    [ -z "$session" ] && {
+        echo "错误: 未在 tmux 会话中"
+        return 1
+    }
+
+    # 检查窗口是否已存在
+    if tmux list-windows -t "$session" -F '#{window_name}' | grep -q "^${name}$"; then
+        echo "⚠ 窗口已存在: $name，切换到该窗口"
+        tmux select-window -t "$session:$name"
+        return 0
+    fi
+
+    # 创建窗口
+    tmux new-window -t "$session" -n "$name" -c "$(pwd)"
+    echo "✓ 已创建窗口: $name"
+}
+
+# 添加 Server 窗口
+# 用法: add-server [name]
+add-server() {
+    local name="${1:-Server}"
+    local session=$(tmux display-message -p '#{session_name}' 2>/dev/null)
+
+    [ -z "$session" ] && {
+        echo "错误: 未在 tmux 会话中"
+        return 1
+    }
+
+    # 检查窗口是否已存在
+    if tmux list-windows -t "$session" -F '#{window_name}' | grep -q "^${name}$"; then
+        echo "⚠ 窗口已存在: $name，切换到该窗口"
+        tmux select-window -t "$session:$name"
+        return 0
+    fi
+
+    # 创建窗口
+    tmux new-window -t "$session" -n "$name" -c "$(pwd)"
+    echo "✓ 已创建窗口: $name"
+}
+
 #===============================================================================
 # 自调度功能 (借鉴 Tmux-Orchestrator)
 #===============================================================================
