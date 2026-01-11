@@ -518,8 +518,9 @@ fire() {
     tmux attach -t "$session"
 }
 
-# 添加窗口
+# 添加窗口 (pm-add-slot --shell 的别名)
 # 用法: add-window <name>
+# 注意: 此函数已改为 pm-add-slot --shell 的别名，创建的窗口会纳入 PM 槽位管理
 add-window() {
     local name="$1"
     local session=$(tmux display-message -p '#{session_name}' 2>/dev/null)
@@ -528,6 +529,8 @@ add-window() {
         echo "用法: add-window <name>"
         echo "示例: add-window Shell"
         echo "      add-window Server"
+        echo ""
+        echo "注意: add-window 现在是 pm-add-slot --shell 的别名"
         return 1
     }
 
@@ -536,16 +539,16 @@ add-window() {
         return 1
     }
 
-    # 检查窗口是否已存在
-    if tmux list-windows -t "$session" -F '#{window_name}' | grep -q "^${name}$"; then
-        echo "⚠ 窗口已存在: $name，切换到该窗口"
+    # 检查槽位是否已存在
+    local current_slots=$(_pm_get_slots)
+    if echo ",$current_slots," | grep -q ",$name,"; then
+        echo "⚠ 槽位已存在: $name，切换到该窗口"
         tmux select-window -t "$session:$name"
         return 0
     fi
 
-    # 创建窗口
-    tmux new-window -t "$session" -n "$name" -c "$(pwd)"
-    echo "✓ 已创建窗口: $name"
+    # 调用 pm-add-slot --shell
+    pm-add-slot "$name" --shell
 }
 
 #===============================================================================
@@ -1422,19 +1425,17 @@ pm-init-slots() {
         return 1
     }
 
-    # 默认只创建 dev-1
+    # 默认创建 dev-1 Claude 槽位
     local default_slot="dev-1"
 
-    if ! tmux list-windows -t "$session" -F '#{window_name}' | grep -q "^${default_slot}$"; then
-        tmux new-window -t "$session" -n "$default_slot" -c "$(pwd)"
-        tmux set-environment -t "$session" "DEV_1_STATUS" "idle"
-        echo "✓ 创建槽位: $default_slot"
-    else
+    # 检查槽位是否已存在
+    local current_slots=$(_pm_get_slots)
+    if echo ",$current_slots," | grep -q ",$default_slot,"; then
         echo "⚠ 槽位已存在: $default_slot"
+    else
+        # 使用 pm-add-slot 创建 Claude 槽位
+        pm-add-slot "$default_slot" --claude
     fi
-
-    # 初始化槽位列表
-    _pm_set_slots "$session" "$default_slot"
 
     _pm_log "INIT" "-" "初始化槽位: $default_slot"
     echo ""
@@ -1442,14 +1443,50 @@ pm-init-slots() {
 }
 
 # 添加新槽位
-# 用法: pm-add-slot <name>
+# 用法: pm-add-slot <name> [--claude|--shell]
+# 模式:
+#   --claude: 创建 Claude 槽位，自动启动 Claude (状态: ready)
+#   --shell:  创建 Shell 槽位，用于执行命令 (状态: idle)
+#   默认:     --shell (向后兼容)
 pm-add-slot() {
-    local slot="$1"
+    local slot=""
+    local mode="shell"  # 默认 shell 模式
     local session=$(tmux display-message -p '#{session_name}' 2>/dev/null)
 
+    # 解析参数
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --claude)
+                mode="claude"
+                shift
+                ;;
+            --shell)
+                mode="shell"
+                shift
+                ;;
+            -*)
+                echo "未知选项: $1"
+                return 1
+                ;;
+            *)
+                if [ -z "$slot" ]; then
+                    slot="$1"
+                fi
+                shift
+                ;;
+        esac
+    done
+
     [ -z "$slot" ] && {
-        echo "用法: pm-add-slot <name>"
-        echo "示例: pm-add-slot dev-2"
+        echo "用法: pm-add-slot <name> [--claude|--shell]"
+        echo ""
+        echo "模式:"
+        echo "  --claude  创建 Claude 槽位，自动启动 Claude"
+        echo "  --shell   创建 Shell 槽位 (默认)"
+        echo ""
+        echo "示例:"
+        echo "  pm-add-slot dev-1 --claude   # Claude 槽位"
+        echo "  pm-add-slot server           # Shell 槽位"
         return 1
     }
 
@@ -1470,10 +1507,25 @@ pm-add-slot() {
         tmux new-window -t "$session" -n "$slot" -c "$(pwd)"
     fi
 
-    # 初始化状态
+    # 初始化状态和类型
     local var_prefix="${slot^^}"
     var_prefix="${var_prefix//-/_}"
-    tmux set-environment -t "$session" "${var_prefix}_STATUS" "idle"
+    tmux set-environment -t "$session" "${var_prefix}_TYPE" "$mode"
+
+    if [[ "$mode" == "claude" ]]; then
+        # Claude 模式：启动 Claude
+        echo "启动 Claude..."
+        tmux send-keys -t "$session:$slot" "$CLAUDE_CMD" Enter
+        _wait_for_claude "$session:$slot" 30
+        tmux set-environment -t "$session" "${var_prefix}_STATUS" "ready"
+        _pm_log "ADD_SLOT" "$slot" "添加 Claude 槽位"
+        echo "✓ 添加 Claude 槽位: $slot (ready)"
+    else
+        # Shell 模式：空窗口
+        tmux set-environment -t "$session" "${var_prefix}_STATUS" "idle"
+        _pm_log "ADD_SLOT" "$slot" "添加 Shell 槽位"
+        echo "✓ 添加 Shell 槽位: $slot"
+    fi
 
     # 更新槽位列表
     if [ -z "$current_slots" ]; then
@@ -1481,9 +1533,6 @@ pm-add-slot() {
     else
         _pm_set_slots "$session" "$current_slots,$slot"
     fi
-
-    _pm_log "ADD_SLOT" "$slot" "添加槽位"
-    echo "✓ 添加槽位: $slot"
 }
 
 # 删除槽位（同时关闭窗口）
@@ -1585,9 +1634,13 @@ pm-list-slots() {
         [ -z "$slot" ] && continue
         local var_prefix="${slot^^}"
         var_prefix="${var_prefix//-/_}"
+        local slot_type=$(tmux show-environment -t "$session" "${var_prefix}_TYPE" 2>/dev/null | cut -d= -f2)
         local status=$(tmux show-environment -t "$session" "${var_prefix}_STATUS" 2>/dev/null | cut -d= -f2)
+        slot_type="${slot_type:-claude}"  # 向后兼容
         status="${status:-idle}"
-        echo "  - $slot ($status)"
+        local type_label="Claude"
+        [[ "$slot_type" == "shell" ]] && type_label="Shell"
+        echo "  - $slot [$type_label] ($status)"
     done
 }
 
@@ -1642,11 +1695,11 @@ pm-status() {
         return 0
     fi
 
-    echo "╔════════════════════════════════════════════════════════════╗"
-    echo "║              PM 状态面板  $(date +%H:%M:%S)                      ║"
-    echo "╠══════════╦══════════╦══════════════════════════════════════╣"
-    echo "║ 槽位     ║ 状态     ║ 任务                                 ║"
-    echo "╠══════════╬══════════╬══════════════════════════════════════╣"
+    echo "╔══════════════════════════════════════════════════════════════════╗"
+    echo "║                 PM 状态面板  $(date +%H:%M:%S)                        ║"
+    echo "╠══════════╦════╦══════════╦═════════════════════════════════════╣"
+    echo "║ 槽位     ║类型║ 状态     ║ 任务                                ║"
+    echo "╠══════════╬════╬══════════╬═════════════════════════════════════╣"
 
     # 使用 for 循环遍历动态槽位列表
     local IFS=','
@@ -1655,11 +1708,17 @@ pm-status() {
         local var_prefix="${slot^^}"
         var_prefix="${var_prefix//-/_}"
 
+        local slot_type=$(tmux show-environment -t "$session" "${var_prefix}_TYPE" 2>/dev/null | cut -d= -f2)
         local status=$(tmux show-environment -t "$session" "${var_prefix}_STATUS" 2>/dev/null | cut -d= -f2)
         local task=$(tmux show-environment -t "$session" "${var_prefix}_TASK" 2>/dev/null | cut -d= -f2)
 
+        slot_type="${slot_type:-claude}"  # 向后兼容
         status="${status:-idle}"
         task="${task:--}"
+
+        # 槽位类型图标
+        local type_icon="🤖"
+        [[ "$slot_type" == "shell" ]] && type_icon="🖥️"
 
         # 检测过时的 working 状态
         local stale_marker=""
@@ -1669,19 +1728,21 @@ pm-status() {
             fi
         fi
 
+        # 状态图标
         local icon="⚪"
         case "$status" in
+            ready)   icon="🔵" ;;
             working) icon="🟢" ;;
             done)    icon="✅" ;;
             error)   icon="🔴" ;;
             blocked) icon="🟡" ;;
         esac
 
-        printf "║ %-8s ║ %s %-6s ║ %-36s ║\n" "$slot" "$icon" "${status}${stale_marker}" "${task:0:36}"
+        printf "║ %-8s ║ %s ║ %s %-6s ║ %-35s ║\n" "$slot" "$type_icon" "$icon" "${status}${stale_marker}" "${task:0:35}"
     done
     unset IFS
 
-    echo "╚══════════╩══════════╩══════════════════════════════════════╝"
+    echo "╚══════════╩════╩══════════╩═════════════════════════════════════╝"
 
     # 如果有过时状态，显示提示
     local has_stale=false
@@ -1730,6 +1791,16 @@ pm-assign() {
         return 1
     }
 
+    # 检查槽位类型
+    local slot_type=$(tmux show-environment -t "$session" "${var_prefix}_TYPE" 2>/dev/null | cut -d= -f2)
+    slot_type="${slot_type:-claude}"  # 向后兼容：无类型默认为 claude
+
+    if [[ "$slot_type" == "shell" ]]; then
+        echo "错误: $slot 是 Shell 槽位，无法分配 Claude 任务"
+        echo "提示: 使用 pm-add-slot $slot --claude 创建 Claude 槽位"
+        return 1
+    fi
+
     # 检查槽位状态
     local status=$(tmux show-environment -t "$session" "${var_prefix}_STATUS" 2>/dev/null | cut -d= -f2)
     if [[ "$status" == "working" ]]; then
@@ -1738,10 +1809,16 @@ pm-assign() {
         return 1
     fi
 
-    # 启动 Claude
-    echo "启动 Claude 到 $slot..."
-    tmux send-keys -t "$session:$slot" "$CLAUDE_CMD" Enter
-    _wait_for_claude "$session:$slot" 30
+    # 根据状态决定是否启动 Claude
+    if [[ "$status" == "ready" ]]; then
+        # ready 状态: Claude 已在运行，直接发送任务
+        echo "槽位 $slot 已就绪，直接分配任务..."
+    else
+        # idle 或其他状态: 需要启动 Claude（向后兼容旧槽位）
+        echo "启动 Claude 到 $slot..."
+        tmux send-keys -t "$session:$slot" "$CLAUDE_CMD" Enter
+        _wait_for_claude "$session:$slot" 30
+    fi
 
     # 加载角色
     echo "加载角色 $role..."
@@ -1772,7 +1849,7 @@ pm-mark() {
         echo "用法: pm-mark <slot> <status>"
         echo "示例: pm-mark dev-1 done"
         echo ""
-        echo "状态: done | error | idle | blocked"
+        echo "状态: done | error | idle | blocked | ready"
         return 1
     }
 
@@ -1785,6 +1862,16 @@ pm-mark() {
         return 1
     }
 
+    # 获取槽位类型
+    local slot_type=$(tmux show-environment -t "$session" "${var_prefix}_TYPE" 2>/dev/null | cut -d= -f2)
+    slot_type="${slot_type:-claude}"  # 向后兼容：无类型默认为 claude
+
+    # Claude 槽位标记为 idle 时，自动转为 ready（因为 Claude 仍在运行）
+    if [[ "$slot_type" == "claude" && "$new_status" == "idle" ]]; then
+        new_status="ready"
+        echo "→ Claude 槽位重置为 ready 状态"
+    fi
+
     # 计算耗时
     local started=$(tmux show-environment -t "$session" "${var_prefix}_STARTED" 2>/dev/null | cut -d= -f2)
     local duration=""
@@ -1795,7 +1882,7 @@ pm-mark() {
 
     tmux set-environment -t "$session" "${var_prefix}_STATUS" "$new_status"
 
-    if [[ "$new_status" == "done" || "$new_status" == "idle" ]]; then
+    if [[ "$new_status" == "done" || "$new_status" == "idle" || "$new_status" == "ready" ]]; then
         tmux set-environment -t "$session" "${var_prefix}_TASK" ""
         tmux set-environment -t "$session" "${var_prefix}_STARTED" ""
     fi
