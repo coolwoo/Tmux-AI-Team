@@ -465,11 +465,9 @@ fire() {
         return 0
     }
 
-    # 创建会话
+    # 创建会话（仅创建 Claude 窗口，Shell/Server 按需创建）
     echo "创建 tmux 会话..."
     tmux new-session -d -s "$session" -c "$project_path" -n "Claude"
-    tmux new-window -t "$session" -n "Shell" -c "$project_path"
-    tmux new-window -t "$session" -n "Server" -c "$project_path"
 
     # 复制 Agent 上下文模板到目标项目
     local tpl_file="$TMUX_AI_TEAM_DIR/.claude/TMUX_AI.md"
@@ -507,55 +505,16 @@ fire() {
     tmux send-keys -t "$session:Claude" "$CLAUDE_CMD" Enter
     _wait_for_claude "$session:Claude" 30
 
-    # 检查是否有项目规范
-    local spec_note=""
-    [ -f "$project_path/project_spec.md" ] && spec_note="请先阅读 project_spec.md。"
-
-    # 构建简报消息
-    local briefing="你负责 $project_name 项目 ($project_type)。$spec_note 请: 1) 分析项目 2) 启动 dev server (Server 窗口) 3) 检查 issues/TODO 4) 开始工作。Git 规则: 每 30 分钟提交一次。"
-
+    # --auto 模式：发送简报开始工作
     if [ "$auto_start" = true ]; then
-        # --auto 模式：直接发送简报开始工作
+        local spec_note=""
+        [ -f "$project_path/project_spec.md" ] && spec_note="请先阅读 project_spec.md。"
+        local briefing="你负责 $project_name 项目 ($project_type)。$spec_note 请: 1) 分析项目 2) 启动 dev server 3) 检查 issues/TODO 4) 开始工作。Git 规则: 每 30 分钟提交一次。"
         tsc "$session:Claude" "$briefing"
-        echo "✓ 项目启动完成! (自动模式)"
-    else
-        # 缓冲模式：等待用户确认
-        echo ""
-        echo "╔═══════════════════════════════════════════════════════════════╗"
-        echo "║  Claude 已就绪，等待确认后开始工作                           ║"
-        echo "╠═══════════════════════════════════════════════════════════════╣"
-        echo "║  会话: $session"
-        echo "║  项目: $project_name ($project_type)"
-        [ -n "$spec_note" ] && echo "║  规范: project_spec.md"
-        echo "╠═══════════════════════════════════════════════════════════════╣"
-        echo "║  可用命令 (在 Claude 窗口使用):                               ║"
-        echo "║    /tmuxAI:pm-oversight   - PM 监督模式                       ║"
-        echo "║    /tmuxAI:deploy-team    - 部署多 Agent 团队                 ║"
-        echo "║    /tmuxAI:role-developer - 开发者角色                        ║"
-        echo "╚═══════════════════════════════════════════════════════════════╝"
-        echo ""
-        echo "操作选项:"
-        echo "  [Enter] 发送默认简报开始工作"
-        echo "  [s]     跳过简报，手动输入任务"
-        echo "  [q]     退出 (保持会话运行)"
-        echo ""
-        read -r -p "选择 [Enter/s/q]: " choice
-
-        case "$choice" in
-            s|S)
-                echo "✓ 会话已就绪，请在 Claude 窗口手动输入任务"
-                ;;
-            q|Q)
-                echo "✓ 会话保持运行，使用 'goto $session' 重新连接"
-                return 0
-                ;;
-            *)
-                tsc "$session:Claude" "$briefing"
-                echo "✓ 简报已发送!"
-                ;;
-        esac
+        echo "✓ 简报已发送!"
     fi
 
+    echo "✓ 会话已就绪"
     tmux attach -t "$session"
 }
 
@@ -1409,11 +1368,11 @@ _pm_log() {
 }
 
 # 获取槽位列表（从环境变量读取）
-# 返回: 逗号分隔的槽位列表，默认 "dev-1"
+# 返回: 逗号分隔的槽位列表，空表示无槽位
 _pm_get_slots() {
     local session=$(tmux display-message -p '#{session_name}' 2>/dev/null)
     local slots=$(tmux show-environment -t "$session" "PM_SLOTS" 2>/dev/null | cut -d= -f2)
-    echo "${slots:-dev-1}"
+    echo "$slots"
 }
 
 # 设置槽位列表
@@ -1925,6 +1884,101 @@ pm-broadcast() {
         echo ""
         echo "✓ 广播完成: $sent_count 个槽位"
     fi
+}
+
+# 获取槽位窗口输出
+# 用法: pm-get-output <slot> [lines]
+pm-get-output() {
+    local slot="$1"
+    local lines="${2:-50}"
+    local session=$(tmux display-message -p '#{session_name}' 2>/dev/null)
+
+    [ -z "$slot" ] && {
+        echo "用法: pm-get-output <slot> [lines]"
+        echo "示例: pm-get-output dev-1 100"
+        return 1
+    }
+
+    # 检查槽位存在
+    tmux list-windows -t "$session" -F '#{window_name}' | grep -q "^${slot}$" || {
+        echo "错误: 槽位 $slot 不存在"
+        return 1
+    }
+
+    # 直接获取输出，不做过滤
+    tmux capture-pane -t "$session:$slot" -p -S -"$lines" 2>/dev/null
+}
+
+# 等待槽位完成并获取结果
+# 用法: pm-wait-result <slot> [timeout_seconds] [poll_interval]
+# 返回: 0=成功获取结果, 1=超时
+pm-wait-result() {
+    local slot="$1"
+    local timeout="${2:-300}"  # 默认 5 分钟超时
+    local interval="${3:-5}"   # 默认 5 秒检查一次
+    local session=$(tmux display-message -p '#{session_name}' 2>/dev/null)
+
+    [ -z "$slot" ] && {
+        echo "用法: pm-wait-result <slot> [timeout_seconds] [poll_interval]"
+        echo "示例: pm-wait-result dev-1 120 3"
+        return 1
+    }
+
+    # 检查槽位存在
+    tmux list-windows -t "$session" -F '#{window_name}' | grep -q "^${slot}$" || {
+        echo "错误: 槽位 $slot 不存在"
+        return 1
+    }
+
+    local elapsed=0
+    echo "⏳ 等待 $slot 完成... (超时: ${timeout}s)" >&2
+
+    while [[ $elapsed -lt $timeout ]]; do
+        # 检查是否空闲
+        if ! _is_slot_active "$session" "$slot"; then
+            echo "✓ $slot 已完成" >&2
+            # 返回输出
+            pm-get-output "$slot" 80
+            return 0
+        fi
+
+        sleep "$interval"
+        elapsed=$((elapsed + interval))
+        echo "  ... 已等待 ${elapsed}s" >&2
+    done
+
+    echo "⚠ 超时: $slot 仍在工作中" >&2
+    return 1
+}
+
+# 发送消息并等待结果
+# 用法: pm-send-and-wait <slot> <message> [timeout_seconds]
+pm-send-and-wait() {
+    local slot="$1"
+    local message="$2"
+    local timeout="${3:-300}"
+    local session=$(tmux display-message -p '#{session_name}' 2>/dev/null)
+
+    [ -z "$slot" ] || [ -z "$message" ] && {
+        echo "用法: pm-send-and-wait <slot> <message> [timeout_seconds]"
+        echo "示例: pm-send-and-wait dev-1 \"请总结当前进度\" 120"
+        return 1
+    }
+
+    # 检查槽位存在
+    tmux list-windows -t "$session" -F '#{window_name}' | grep -q "^${slot}$" || {
+        echo "错误: 槽位 $slot 不存在"
+        return 1
+    }
+
+    echo "📤 发送消息到 $slot..." >&2
+    tsc "$session:$slot" "$message"
+
+    # 等待 Agent 开始处理
+    sleep 2
+
+    # 等待完成并返回结果
+    pm-wait-result "$slot" "$timeout" 5
 }
 
 # 查看 PM 操作历史
