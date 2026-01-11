@@ -16,6 +16,8 @@ graph TB
         D03["03-pm-oversight-mode.md<br/>🎯 PM 监督模式"]
         D04["04-agent-roles.md<br/>👥 Agent 角色"]
         D05["05-best-practices.md<br/>✨ 最佳实践"]
+        D_PM["pm常用提示词.md<br/>📝 PM 提示词"]
+        D_CLAUDE["CLAUDE.md<br/>📄 本文件"]
     end
 
     D01 --> D02
@@ -30,9 +32,10 @@ graph TB
 |------|------|----------|
 | `01-quick-start.md` | 5分钟入门指南、安装、首次启动 | 新用户 |
 | `02-multi-project-mode.md` | 同时管理多个 Agent 的 Orchestrator 模式 | 需要多项目协调的用户 |
-| `03-pm-oversight-mode.md` | AI PM 自动监督 Engineer Agent | 需要无人值守的用户 |
+| `03-pm-oversight-mode.md` | AI PM 自动监督 Engineer Agent、槽位管理 v3.5 | 需要无人值守的用户 |
 | `04-agent-roles.md` | 6种 Agent 角色详解和协作方式 | 团队协作用户 |
 | `05-best-practices.md` | 使用技巧和经验总结 | 所有用户 |
+| `pm常用提示词.md` | PM 常用指令和提示词模板 | PM 模式用户 |
 
 ## 阅读顺序建议
 

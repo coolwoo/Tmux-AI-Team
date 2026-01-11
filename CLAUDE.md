@@ -46,7 +46,9 @@ graph TB
         T_FILES["check-files.sh"]
         T_ROLE["check-role-status-section.sh"]
         subgraph TestDirs["测试分类"]
-            T_UNIT["unit/"]
+            subgraph T_UNIT["unit/"]
+                T_SLOT["test-slot-design.sh<br/>槽位设计验证"]
+            end
             T_INTEG["integration/"]
             T_EDGE["edge/"]
         end
@@ -189,7 +191,7 @@ flowchart LR
 | 斜杠命令 | [`.claude/commands/tmuxAI/`](.claude/commands/tmuxAI/) | PM、团队部署、角色命令 (13 个) |
 | 专家 Agents | [`.claude/agents/`](.claude/agents/) | 后端架构、代码搜索等专家 (12 个) |
 | Hook 集成 | [`hooks/`](hooks/) | Claude Code Hook 配置模板，实现状态推送（核心逻辑在 `_pm_stop_hook` 函数） |
-| 测试脚本 | [`tests/`](tests/) | 语法检查、函数存在性验证 (4 个) |
+| 测试脚本 | [`tests/`](tests/) | 语法检查、函数存在性验证、槽位设计测试 (5 个) |
 | 用户文档 | [`docs/`](docs/) | 快速开始、使用手册、最佳实践 (6 个) |
 | 设计文档 | [`prompts/`](prompts/) | Hook 集成设计、功能验证方案 |
 
@@ -210,6 +212,12 @@ bash -c 'source bashrc-ai-automation-v2.sh; fire'  # 列出可用项目
 
 # 语法检查
 bash -n bashrc-ai-automation-v2.sh
+
+# 运行测试套件
+bash tests/check-syntax.sh        # 语法检查
+bash tests/check-functions.sh     # 函数存在性
+bash tests/check-files.sh         # 文件完整性
+bash tests/unit/test-slot-design.sh  # 槽位设计验证 (44 测试点)
 ```
 
 ## 核心概念
