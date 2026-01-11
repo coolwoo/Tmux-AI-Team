@@ -1,17 +1,39 @@
 # Agent 团队角色指南
 
-本文档总结了 6 种 Agent 角色的用法和特点。
+本文档总结了 Agent 角色和 PM 槽位管理命令的用法和特点。
 
-## 角色概览
+## 命令概览
 
-| 角色 | 命令 | 用途 |
-|-----|------|-----|
+### 管理与角色命令
+
+| 命令 | 调用方式 | 用途 |
+|------|----------|------|
 | deploy-team | `/tmuxAI:deploy-team` | 根据项目规模部署 Agent 团队 |
 | pm-oversight | `/tmuxAI:pm-oversight` | PM 监督工程师执行 |
 | role-developer | `/tmuxAI:role-developer` | 开发工程师执行开发任务 |
 | role-devops | `/tmuxAI:role-devops` | DevOps 处理部署和基础设施 |
 | role-qa | `/tmuxAI:role-qa` | QA 工程师测试和质量保证 |
 | role-reviewer | `/tmuxAI:role-reviewer` | 代码审查员进行代码评审 |
+
+### PM 槽位管理命令 (v3.5)
+
+| 命令 | 调用方式 | 用途 |
+|------|----------|------|
+| pm-init | `/tmuxAI:pm-init` | 初始化 PM 槽位管理（默认创建 dev-1，可用 pm-add-slot 添加更多） |
+| pm-add-slot | `pm-add-slot <name>` | 添加新槽位（如 dev-2, qa） |
+| pm-remove-slot | `pm-remove-slot <name>` | 移除槽位（需确认或 -f 强制） |
+| pm-list-slots | `pm-list-slots` | 列出当前所有槽位 |
+| pm-assign | `/tmuxAI:pm-assign` | 分配任务到槽位 |
+| pm-status | `/tmuxAI:pm-status` | 查看槽位状态面板 |
+| pm-check | `/tmuxAI:pm-check` | 智能检测槽位状态 |
+| pm-mark | `/tmuxAI:pm-mark` | 手动标记槽位状态 |
+| pm-broadcast | `/tmuxAI:pm-broadcast` | 广播消息到工作中的槽位 |
+| pm-history | `/tmuxAI:pm-history` | 查看 PM 操作历史 |
+| pm-get-output | `pm-get-output <slot> [lines]` | 获取槽位最近输出 |
+| pm-wait-result | `pm-wait-result <slot> [timeout]` | 等待槽位完成并返回结果 |
+| pm-send-and-wait | `pm-send-and-wait <slot> <msg>` | 发送消息并等待结果 |
+
+> 详细的 PM 槽位管理使用说明见 [PM 监督模式手册](03-pm-oversight-mode.md#pm-槽位管理-v34)
 
 ---
 

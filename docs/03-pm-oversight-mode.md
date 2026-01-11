@@ -4,7 +4,7 @@
 
 PM 监督模式让一个 Claude Agent 作为项目经理 (PM)，自动监督多个 Engineer Agent 的开发工作。PM Agent 会定期检查进度、监控错误、验收功能，实现无人值守的自动化开发。
 
-**v3.4 新增**: PM 槽位管理功能，支持同时管理 3 个工作槽位 (dev-1, dev-2, qa)，通过 `[STATUS:*]` 标记实现智能状态检测。
+**v3.5 新增**: PM 槽位管理功能，默认创建 dev-1 槽位，可用 `pm-add-slot` 动态添加更多槽位（如 dev-2, qa），通过 `[STATUS:*]` 标记实现智能状态检测。
 
 ## 架构图
 
@@ -643,23 +643,27 @@ v3.4 新增了 PM 槽位管理功能，让 PM Agent 可以同时管理多个子 
 ### 快速开始
 
 ```bash
-# 1. PM 初始化槽位
+# 1. PM 初始化槽位（默认创建 dev-1）
 /tmuxAI:pm-init
 
-# 2. 分配任务
+# 2. 按需添加更多槽位
+pm-add-slot dev-2
+pm-add-slot qa
+
+# 3. 分配任务
 /tmuxAI:pm-assign dev-1 role-developer "实现用户登录 API"
 /tmuxAI:pm-assign dev-2 role-developer "实现登录页面 UI"
 
-# 3. 查看状态
+# 4. 查看状态
 /tmuxAI:pm-status
 
-# 4. 检测任务完成
+# 5. 检测任务完成
 /tmuxAI:pm-check dev-1
 
-# 5. 分配测试
+# 6. 分配测试
 /tmuxAI:pm-assign qa role-qa "测试登录功能"
 
-# 6. 查看历史
+# 7. 查看历史
 /tmuxAI:pm-history
 ```
 
@@ -667,13 +671,19 @@ v3.4 新增了 PM 槽位管理功能，让 PM Agent 可以同时管理多个子 
 
 | 命令 | 说明 |
 |------|------|
-| `/tmuxAI:pm-init` | 初始化 3 个槽位 (dev-1, dev-2, qa) |
+| `/tmuxAI:pm-init` | 初始化 PM 槽位管理（默认创建 dev-1） |
+| `pm-add-slot <name>` | 添加新槽位（如 dev-2, qa） |
+| `pm-remove-slot <name>` | 移除槽位（需确认或 -f 强制） |
+| `pm-list-slots` | 列出当前所有槽位 |
 | `/tmuxAI:pm-assign <slot> <role> <task>` | 分配任务到槽位 |
 | `/tmuxAI:pm-status` | 查看状态面板 |
 | `/tmuxAI:pm-check <slot>` | 智能检测槽位状态 |
 | `/tmuxAI:pm-mark <slot> <status>` | 手动标记状态 |
 | `/tmuxAI:pm-broadcast <message>` | 广播消息 |
 | `/tmuxAI:pm-history` | 查看操作历史 |
+| `pm-get-output <slot> [lines]` | 获取槽位最近输出 |
+| `pm-wait-result <slot> [timeout]` | 等待槽位完成并返回结果 |
+| `pm-send-and-wait <slot> <msg>` | 发送消息并等待结果 |
 
 ### 状态标记协议
 
@@ -751,13 +761,24 @@ PM Agent 工作流程：
 除了斜杠命令，也可以在终端直接使用 Bash 函数：
 
 ```bash
-pm-init-slots                           # 初始化槽位
+# 槽位管理
+pm-init-slots                           # 初始化（默认创建 dev-1）
+pm-add-slot dev-2                       # 添加新槽位
+pm-remove-slot dev-2                    # 移除槽位
+pm-list-slots                           # 列出所有槽位
+
+# 任务分配与状态
 pm-assign dev-1 role-developer "任务"   # 分配任务
 pm-status                               # 查看状态
 pm-check dev-1                          # 检测状态
 pm-mark dev-1 done                      # 手动标记
 pm-broadcast "消息"                     # 广播
 pm-history                              # 查看历史
+
+# 高级函数
+pm-get-output dev-1 100                 # 获取槽位最近 100 行输出
+pm-wait-result dev-1 300                # 等待槽位完成（超时 300 秒）
+pm-send-and-wait dev-1 "请总结进度"      # 发送消息并等待结果
 ```
 
 ### 日志系统
@@ -765,7 +786,9 @@ pm-history                              # 查看历史
 PM 操作日志保存在 `$AGENT_LOG_DIR/pm_<session>_<date>.log`：
 
 ```
-[2026-01-10 14:00:00] [INIT] [-] 初始化槽位: dev-1, dev-2, qa
+[2026-01-10 14:00:00] [INIT] [-] 初始化槽位: dev-1
+[2026-01-10 14:00:05] [ADD] [-] 添加槽位: dev-2
+[2026-01-10 14:00:10] [ADD] [-] 添加槽位: qa
 [2026-01-10 14:01:23] [ASSIGN] [dev-1] 实现用户登录 API (角色: role-developer)
 [2026-01-10 14:30:00] [CHECK] [dev-1] detected: done - 登录 API 已完成
 [2026-01-10 14:30:00] [MARK] [dev-1] done (耗时: 28分钟)

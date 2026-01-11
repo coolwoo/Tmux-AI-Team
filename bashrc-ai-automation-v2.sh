@@ -2092,14 +2092,20 @@ pm-history() {
 #   end-agent <session> <win>   结束 Agent 并保存日志
 #   clean-agent-logs [days]     清理旧日志
 #
-# PM 槽位管理 (v3.4):
-#   pm-init-slots               初始化 3 个槽位 (dev-1, dev-2, qa)
+# PM 槽位管理 (v3.5):
+#   pm-init-slots               初始化槽位管理（默认创建 dev-1）
+#   pm-add-slot <name>          添加新槽位（如 dev-2, qa）
+#   pm-remove-slot <name>       移除槽位（需确认或 -f 强制）
+#   pm-list-slots               列出当前所有槽位
 #   pm-assign <slot> <role> <task>  分配任务到槽位
 #   pm-status                   查看所有槽位状态面板
 #   pm-check <slot>             智能检测槽位状态 (解析 [STATUS:*])
 #   pm-mark <slot> <status>     手动标记槽位状态
 #   pm-broadcast <message>      广播消息到所有工作中的槽位
 #   pm-history [n|today|all]    查看 PM 操作历史
+#   pm-get-output <slot> [lines]     获取槽位最近输出
+#   pm-wait-result <slot> [timeout]  等待槽位完成并返回结果
+#   pm-send-and-wait <slot> <msg>    发送消息并等待结果
 #
 #===============================================================================
 
