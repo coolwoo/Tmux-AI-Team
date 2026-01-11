@@ -31,17 +31,30 @@ graph TB
         D03["03-pm-oversight-mode.md"]
         D04["04-agent-roles.md"]
         D05["05-best-practices.md"]
+        D_PM["pm常用提示词.md"]
     end
 
     subgraph Hooks["🔗 hooks/"]
-        STOP_HOOK["pm-stop-hook.sh<br/>状态推送"]
+        STOP_HOOK["pm-stop-hook.sh<br/>状态推送 (deprecated)"]
         HOOK_TEMPLATE["settings.template.json"]
+        HOOK_DOC["CLAUDE.md<br/>配置文档"]
     end
 
     subgraph Tests["🧪 tests/"]
         T_SYNTAX["check-syntax.sh"]
         T_FUNCS["check-functions.sh"]
         T_FILES["check-files.sh"]
+        T_ROLE["check-role-status-section.sh"]
+        subgraph TestDirs["测试分类"]
+            T_UNIT["unit/"]
+            T_INTEG["integration/"]
+            T_EDGE["edge/"]
+        end
+    end
+
+    subgraph Prompts["💡 prompts/"]
+        P_HOOK["hook整合.md"]
+        P_VERIFY["新功能验证方案.md"]
     end
 
     subgraph Claude[".claude/"]
@@ -52,23 +65,32 @@ graph TB
                 PM["pm-oversight.md"]
                 DEPLOY["deploy-team.md"]
                 ROLES["role-*.md (4个)"]
-                PMSLOTS["pm-*.md (10个)<br/>槽位管理 v3.5"]
+                PMSLOTS["pm-*.md (7个)<br/>槽位管理 v3.5"]
             end
             subgraph Other["其他命令组"]
-                SECURITY["security/"]
-                DOC["documentation/"]
-                ZCF["zcf/"]
+                SECURITY["security/ (9个)"]
+                DOC["documentation/ (2个)"]
+                ZCF["zcf/ (8个)"]
+                ANTHRO["anthropic/ (3个)"]
+                ARCH["architecture/ (1个)"]
+                PROMPTENG["promptengineering/ (2个)"]
+                REFACTOR["refactor/ (1个)"]
+                CLEANUP["cleanup/ (1个)"]
             end
         end
 
         subgraph Agents["agents/"]
-            AGENT1["专家 Agents"]
+            AGENT1["专家 Agents (8个)"]
+            AGENT_ZCF["zcf/ 工具 Agents (4个)"]
         end
+
+        MCP["mcp/mcp_servers.json"]
     end
 
     Root --> Docs
     Root --> Hooks
     Root --> Tests
+    Root --> Prompts
     Root --> Claude
 ```
 
@@ -162,12 +184,14 @@ flowchart LR
 
 | 模块 | 路径 | 说明 |
 |------|------|------|
-| 核心函数库 | [`bashrc-ai-automation-v2.sh`](bashrc-ai-automation-v2.sh) | 所有 Bash 函数定义 |
+| 核心函数库 | [`bashrc-ai-automation-v2.sh`](bashrc-ai-automation-v2.sh) | 所有 Bash 函数定义 (约 2100 行) |
 | Agent 上下文 | [`.claude/TMUX_AI.md`](.claude/TMUX_AI.md) | fire 启动时复制到目标项目 |
-| 斜杠命令 | [`.claude/commands/tmuxAI/`](.claude/commands/tmuxAI/) | PM、团队部署、角色命令 |
-| Hook 集成 | [`hooks/`](hooks/) | Claude Code Hook 脚本，实现状态推送 |
-| 测试脚本 | [`tests/`](tests/) | 语法检查、函数存在性验证 |
-| 用户文档 | [`docs/`](docs/) | 快速开始、使用手册、最佳实践 |
+| 斜杠命令 | [`.claude/commands/tmuxAI/`](.claude/commands/tmuxAI/) | PM、团队部署、角色命令 (13 个) |
+| 专家 Agents | [`.claude/agents/`](.claude/agents/) | 后端架构、代码搜索等专家 (12 个) |
+| Hook 集成 | [`hooks/`](hooks/) | Claude Code Hook 配置模板，实现状态推送（核心逻辑在 `_pm_stop_hook` 函数） |
+| 测试脚本 | [`tests/`](tests/) | 语法检查、函数存在性验证 (4 个) |
+| 用户文档 | [`docs/`](docs/) | 快速开始、使用手册、最佳实践 (6 个) |
+| 设计文档 | [`prompts/`](prompts/) | Hook 集成设计、功能验证方案 |
 
 ## 开发与测试
 
@@ -258,6 +282,10 @@ graph LR
         start["start-auto-commit()"]
         stop["stop-auto-commit()"]
     end
+
+    subgraph Hooks["Claude Code Hook"]
+        stophook["_pm_stop_hook()"]
+    end
 ```
 
 ### 消息发送 (tsc)
@@ -322,6 +350,33 @@ check-deps
 - **L0 致命级**：tmux, claude, CODING_BASE → 阻止关键函数执行
 - **L1 重要级**：at, atd, git → 警告但允许继续
 - **L2 信息级**：watch, 日志目录 → 仅提示
+
+### Stop Hook (_pm_stop_hook)
+
+Claude Code Stop 事件触发的 Hook 函数，实现推送式状态通知：
+
+```bash
+# 配置方式 (项目 .claude/settings.json):
+{
+  "hooks": {
+    "Stop": [{
+      "hooks": [{
+        "type": "command",
+        "command": "bash -c 'source ~/.ai-automation.sh && _pm_stop_hook'",
+        "timeout": 10000
+      }]
+    }]
+  }
+}
+```
+
+功能：
+- 检测 Agent 输出中的 `[STATUS:DONE/ERROR/BLOCKED]` 标记
+- 自动调用 `pm-mark` 更新状态（包含耗时计算）
+- 向 PM 窗口发送通知消息
+- 内置防抖机制（相同状态不重复通知）
+
+详细配置请参考 [`hooks/CLAUDE.md`](hooks/CLAUDE.md)。
 
 ## 配置
 

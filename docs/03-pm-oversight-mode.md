@@ -798,6 +798,82 @@ PM 操作日志保存在 `$AGENT_LOG_DIR/pm_<session>_<date>.log`：
 
 ---
 
+## Hook 自动状态推送 (v1.5)
+
+v1.5 新增了 Claude Code Hook 集成，实现从轮询模式到推送模式的转变。
+
+### 工作原理
+
+```
+整合前 (轮询模式):
+PM: "dev-1 完成了吗?" → pm-check → 手动检测状态标记
+PM: "现在呢?" → 再次 pm-check → 重复...
+
+整合后 (推送模式):
+dev-1: 完成任务，输出 [STATUS:DONE]
+Hook: 自动检测 → 更新状态 → 通知 PM
+PM: 收到通知 "[Hook] dev-1 → done"
+```
+
+### 配置方法
+
+1. 创建符号链接（一次性）：
+
+```bash
+ln -s $TMUX_AI_TEAM_DIR/bashrc-ai-automation-v2.sh ~/.ai-automation.sh
+```
+
+2. 在目标项目添加配置 `.claude/settings.json`：
+
+```json
+{
+  "hooks": {
+    "Stop": [{
+      "hooks": [{
+        "type": "command",
+        "command": "bash -c 'source ~/.ai-automation.sh && _pm_stop_hook'",
+        "timeout": 10000
+      }]
+    }]
+  }
+}
+```
+
+### Hook 通知格式
+
+当 Agent 输出状态标记时，PM 会收到通知：
+
+```
+[Hook] dev-1 → done: 用户登录 API 已完成
+[Hook] dev-2 → error: 依赖安装失败
+[Hook] qa → blocked: 等待 dev-1 完成
+```
+
+### Hook 优势
+
+| 特性 | 轮询方式 (pm-check) | Hook 方式 |
+|------|---------------------|-----------|
+| 触发时机 | 手动或定时 | 实时自动 |
+| PM 感知延迟 | 依赖检查频率 | 秒级响应 |
+| 资源消耗 | 需要持续轮询 | 事件驱动 |
+| 耗时计算 | 需手动调用 pm-mark | 自动计算 |
+| 防抖机制 | 无 | 内置 |
+
+### 混合使用策略
+
+Hook 不是万能的，建议混合使用：
+
+| 场景 | 推荐方式 |
+|------|----------|
+| 长时间任务 | Hook 通知 |
+| 快速查询 | pm-send-and-wait |
+| Hook 未配置的项目 | 轮询方式 |
+| 紧急任务 | 轮询 + Hook |
+
+详细配置请参考 [hooks/CLAUDE.md](../hooks/CLAUDE.md)。
+
+---
+
 ## 常见问题 (FAQ)
 
 ### Q: 任务完成后如何再次激活 PM 监督？

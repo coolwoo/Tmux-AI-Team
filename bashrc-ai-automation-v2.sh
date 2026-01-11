@@ -2043,6 +2043,88 @@ pm-history() {
 }
 
 #===============================================================================
+# Claude Code Hook 入口
+#===============================================================================
+
+# Stop Hook: 检测 Agent 状态变化并通知 PM
+# 由 Claude Code Stop 事件触发，通过 settings.json 配置
+# 用法: bash -c 'source ~/.ai-automation.sh && _pm_stop_hook'
+#
+# 配置方式 (项目 .claude/settings.json):
+# {
+#   "hooks": {
+#     "Stop": [{
+#       "hooks": [{
+#         "type": "command",
+#         "command": "bash -c 'source ~/.ai-automation.sh && _pm_stop_hook'",
+#         "timeout": 10000
+#       }]
+#     }]
+#   }
+# }
+_pm_stop_hook() {
+    # 读取 stdin（Claude Code 传入的 JSON，可忽略）
+    cat > /dev/null
+
+    local session=$(tmux display-message -p '#{session_name}' 2>/dev/null)
+    local window=$(tmux display-message -p '#{window_name}' 2>/dev/null)
+
+    # 不在 tmux 中，跳过
+    [[ -z "$session" ]] && return 0
+
+    # PM 窗口不需要向自己汇报（优先 Claude，再 pm）
+    [[ "$window" == "Claude" || "$window" == "pm" ]] && return 0
+
+    local slot="$window"
+    local var_prefix="${slot^^}"
+    var_prefix="${var_prefix//-/_}"
+
+    # 获取最近 30 行输出
+    local output=$(tmux capture-pane -t "$session:$slot" -p -S -30 2>/dev/null)
+
+    # 检测状态标记（使用行首匹配避免误判文档示例）
+    local detected_status=""
+    local detected_message=""
+
+    if echo "$output" | grep -qE "^[[:space:]]*\[STATUS:DONE\]"; then
+        detected_status="done"
+        detected_message=$(echo "$output" | grep -E "^[[:space:]]*\[STATUS:DONE\]" | tail -1 | sed 's/.*\[STATUS:DONE\][[:space:]]*//')
+    elif echo "$output" | grep -qE "^[[:space:]]*\[STATUS:ERROR\]"; then
+        detected_status="error"
+        detected_message=$(echo "$output" | grep -E "^[[:space:]]*\[STATUS:ERROR\]" | tail -1 | sed 's/.*\[STATUS:ERROR\][[:space:]]*//')
+    elif echo "$output" | grep -qE "^[[:space:]]*\[STATUS:BLOCKED\]"; then
+        detected_status="blocked"
+        detected_message=$(echo "$output" | grep -E "^[[:space:]]*\[STATUS:BLOCKED\]" | tail -1 | sed 's/.*\[STATUS:BLOCKED\][[:space:]]*//')
+    fi
+
+    # 未检测到状态标记，跳过
+    [[ -z "$detected_status" ]] && return 0
+
+    # 防抖：检查状态是否变化
+    local current_status=$(tmux show-environment -t "$session" "${var_prefix}_STATUS" 2>/dev/null | cut -d= -f2)
+    [[ "$detected_status" == "$current_status" ]] && return 0
+
+    # 调用现有函数更新状态（包含耗时计算、日志记录）
+    pm-mark "$slot" "$detected_status"
+
+    # 通知 PM 窗口
+    local pm_window=""
+    if tmux list-windows -t "$session" -F '#{window_name}' | grep -q "^Claude$"; then
+        pm_window="Claude"
+    elif tmux list-windows -t "$session" -F '#{window_name}' | grep -q "^pm$"; then
+        pm_window="pm"
+    fi
+
+    if [[ -n "$pm_window" ]]; then
+        local notify="[Hook] $slot → $detected_status"
+        [[ -n "$detected_message" ]] && notify="$notify: $detected_message"
+        tsc "$session:$pm_window" "$notify"
+    fi
+
+    _pm_log "HOOK" "$slot" "$detected_status: $detected_message"
+}
+
+#===============================================================================
 # 使用说明
 #===============================================================================
 #
