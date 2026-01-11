@@ -7,12 +7,24 @@
 | 窗口名称 | 用途 |
 |----------|------|
 | `Claude` | 你所在的窗口（Agent） |
-| `Shell` | 命令行操作 |
-| `Server` | 开发服务器 |
+| `Shell` | 命令行操作（按需创建） |
+| `Server` | 开发服务器（按需创建） |
 
-> 窗口编号取决于 tmux `base-index` 配置。脚本使用窗口名称引用，不依赖编号。
+> 仅 Claude 窗口默认创建，其他窗口使用 `add-window` 按需创建。
 
 ## 核心函数
+
+### 添加窗口
+```bash
+add-window <name>
+```
+按需创建新窗口。窗口已存在时自动切换。
+
+示例:
+```bash
+add-window Shell   # 创建 Shell 窗口
+add-window Server  # 创建 Server 窗口
+```
 
 ### 发送消息
 ```bash
