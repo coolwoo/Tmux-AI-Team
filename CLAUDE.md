@@ -33,6 +33,17 @@ graph TB
         D05["05-best-practices.md"]
     end
 
+    subgraph Hooks["🔗 hooks/"]
+        STOP_HOOK["pm-stop-hook.sh<br/>状态推送"]
+        HOOK_TEMPLATE["settings.template.json"]
+    end
+
+    subgraph Tests["🧪 tests/"]
+        T_SYNTAX["check-syntax.sh"]
+        T_FUNCS["check-functions.sh"]
+        T_FILES["check-files.sh"]
+    end
+
     subgraph Claude[".claude/"]
         TMUX_AI["TMUX_AI.md<br/>📋 Agent 上下文模板"]
 
@@ -56,6 +67,8 @@ graph TB
     end
 
     Root --> Docs
+    Root --> Hooks
+    Root --> Tests
     Root --> Claude
 ```
 
@@ -80,8 +93,7 @@ flowchart TB
     subgraph Tmux["🖥️ Tmux 会话"]
         subgraph Session["会话: project-name"]
             W1["窗口: Claude<br/>🤖 AI Agent"]
-            W2["窗口: Shell<br/>💻 命令行"]
-            W3["窗口: Server<br/>🌐 开发服务器"]
+            W2["(按需创建其他窗口)"]
         end
     end
 
@@ -136,12 +148,14 @@ flowchart LR
 
     subgraph Eng_Session["Engineer 会话"]
         ENG["👷 Engineer Agent<br/>/tmuxAI:role-developer"]
+        HOOK["🔗 Stop Hook"]
     end
 
-    PM -->|"任务分配<br/>send-task"| ENG
-    PM -->|"进度查询<br/>monitor-snapshot"| ENG
-    ENG -->|"状态汇报<br/>send-status"| PM
-    ENG -->|"阻塞通知<br/>send-blocked"| PM
+    PM -->|"任务分配<br/>tsc/pm-assign"| ENG
+    PM -->|"进度查询<br/>pm-get-output"| ENG
+    ENG -->|"[STATUS:*]"| HOOK
+    HOOK -->|"状态推送<br/>(自动)"| PM
+    ENG -.->|"手动汇报<br/>send-status"| PM
 ```
 
 ## 模块索引
@@ -151,6 +165,8 @@ flowchart LR
 | 核心函数库 | [`bashrc-ai-automation-v2.sh`](bashrc-ai-automation-v2.sh) | 所有 Bash 函数定义 |
 | Agent 上下文 | [`.claude/TMUX_AI.md`](.claude/TMUX_AI.md) | fire 启动时复制到目标项目 |
 | 斜杠命令 | [`.claude/commands/tmuxAI/`](.claude/commands/tmuxAI/) | PM、团队部署、角色命令 |
+| Hook 集成 | [`hooks/`](hooks/) | Claude Code Hook 脚本，实现状态推送 |
+| 测试脚本 | [`tests/`](tests/) | 语法检查、函数存在性验证 |
 | 用户文档 | [`docs/`](docs/) | 快速开始、使用手册、最佳实践 |
 
 ## 开发与测试
@@ -270,11 +286,14 @@ schedule-checkin 30 "检查进度"
 
 ```bash
 fire my-project
-# → 创建 3 个窗口: Claude, Shell, Server
+# → 创建会话（仅 Claude 窗口，其他按需创建）
 # → 在 Claude 窗口启动 claude 命令
 # → 复制 .claude/TMUX_AI.md 到目标项目
 # → 复制斜杠命令到目标项目
-# → 发送初始任务简报
+# → 直接附加到会话
+
+fire --auto my-project
+# → 同上，但会自动发送任务简报
 ```
 
 ### 环境自检 (check-deps)

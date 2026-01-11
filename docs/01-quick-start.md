@@ -65,19 +65,21 @@ check-deps
 
 输出示例：
 ```
-===== 环境依赖检查 =====
-
-[L0 致命级]
-  ✓ tmux 3.3a
-  ✓ claude claude-code/1.0.0
-  ✓ CODING_BASE=/home/user/Coding
-
-[L1 重要级]
-  ✓ at 3.2.5
-  ✓ atd 运行中
-  ✓ git 2.43.0
-
-===== 检查完成 =====
+┌─────────────────────────────────────────────────────────┐
+│  AI 自动化工具包 - 环境检查                             │
+├─────────────────────────────────────────────────────────┤
+│ ✓ tmux 3.3a
+│ ✓ claude (claude)
+│ ✓ CODING_BASE: /home/user/Coding
+├─────────────────────────────────────────────────────────┤
+│ ✓ at (自调度命令)
+│ ✓ atd 服务运行中
+│ ✓ git version 2.43.0
+├─────────────────────────────────────────────────────────┤
+│ ○ watch (可选 - 实时监控)
+│ ○ 日志目录: /home/user/.agent-logs
+└─────────────────────────────────────────────────────────┘
+状态: ✓ 就绪
 ```
 
 ### 2.5 Agent 上下文（自动配置）
@@ -98,7 +100,6 @@ fire my-project
 - 与用户已有的 `.claude/CLAUDE.md` 互不干扰
 
 **模板内容**：
-- 窗口布局说明（Claude, Shell, Server）
 - 核心函数：`tsc`、`schedule-checkin`、`send-status`
 - 基本工作流程指引
 - 复杂场景（如 PM 监督）通过斜杠命令按需加载更多上下文
@@ -124,13 +125,17 @@ fire
 ```bash
 # 启动项目（替换为你的项目名）
 fire my-project
+
+# 如需自动发送任务简报
+fire --auto my-project
 ```
 
 这会：
-1. 创建 tmux 会话 `my-project`
-2. 创建 3 个窗口：Claude、Shell、Server
-3. 在 Claude 窗口启动 `claude` 命令
-4. 自动附加到会话
+1. 创建 tmux 会话 `my-project`（仅 Claude 窗口）
+2. 在 Claude 窗口启动 `claude` 命令
+3. 自动附加到会话
+
+> **提示**: Shell、Server 等窗口按需创建，保持会话简洁。
 
 ### tmux 基本操作
 
@@ -141,7 +146,7 @@ fire my-project
 | `Ctrl+b n` | 下一个窗口 |
 | `Ctrl+b p` | 上一个窗口 |
 
-> **注意**: 窗口编号取决于 tmux 配置。脚本使用窗口名称（Claude, Shell, Server）引用窗口，不受 `base-index` 影响。
+> **注意**: 脚本使用窗口名称（如 Claude）引用窗口，不受 `base-index` 影响。
 
 ---
 

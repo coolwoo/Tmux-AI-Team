@@ -106,9 +106,9 @@ list-agents
 输出示例：
 ```
 活跃的 Agent 会话:
-  frontend (3 窗口)
-  backend (3 窗口)
-  mobile (3 窗口)
+  frontend (1 窗口)
+  backend (1 窗口)
+  mobile (1 窗口)
 ```
 
 ---
