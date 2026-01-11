@@ -137,6 +137,13 @@ fire --auto my-project
 
 > **提示**: Shell、Server 等窗口按需创建，保持会话简洁。
 
+### 按需添加窗口
+
+```bash
+add-window Shell   # 创建 Shell 窗口
+add-window Server  # 创建 Server 窗口
+```
+
 ### tmux 基本操作
 
 | 快捷键 | 作用 |
