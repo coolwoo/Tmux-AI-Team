@@ -2117,17 +2117,42 @@ pm-history() {
 #   }
 # }
 _pm_stop_hook() {
+    local debug_log=~/.agent-logs/hook_debug.log
+    mkdir -p ~/.agent-logs 2>/dev/null
+
     # 读取 stdin（Claude Code 传入的 JSON，可忽略）
     cat > /dev/null
 
     local session=$(tmux display-message -p '#{session_name}' 2>/dev/null)
     local window=$(tmux display-message -p '#{window_name}' 2>/dev/null)
 
-    # 不在 tmux 中，跳过
-    [[ -z "$session" ]] && return 0
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] [DEBUG] _pm_stop_hook called, session=$session window=$window" >> "$debug_log"
 
-    # PM 窗口不需要向自己汇报（优先 Claude，再 pm）
-    [[ "$window" == "Claude" || "$window" == "pm" ]] && return 0
+    # 不在 tmux 中，跳过
+    [[ -z "$session" ]] && { echo "[$(date '+%Y-%m-%d %H:%M:%S')] [DEBUG] EXIT: not in tmux" >> "$debug_log"; return 0; }
+
+    # 获取已注册槽位列表
+    local slots=$(tmux show-environment -t "$session" PM_SLOTS 2>/dev/null | cut -d= -f2)
+    local is_registered_slot=false
+
+    # 检查当前窗口是否是已注册的槽位
+    if [[ -n "$slots" ]]; then
+        for s in $slots; do
+            [[ "$s" == "$window" ]] && { is_registered_slot=true; break; }
+        done
+    fi
+
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] [DEBUG] slots=[$slots] is_registered_slot=$is_registered_slot" >> "$debug_log"
+
+    # 判断是否应该处理：
+    # 1. 如果是已注册槽位，应该处理（即使窗口名是 Claude/pm）
+    # 2. 如果不是已注册槽位，且窗口是 Claude/pm，则视为 PM 窗口，跳过
+    if [[ "$is_registered_slot" != true ]]; then
+        if [[ "$window" == "Claude" || "$window" == "pm" ]]; then
+            echo "[$(date '+%Y-%m-%d %H:%M:%S')] [DEBUG] EXIT: is PM window ($window), not a registered slot" >> "$debug_log"
+            return 0
+        fi
+    fi
 
     local slot="$window"
     local var_prefix="${slot^^}"
