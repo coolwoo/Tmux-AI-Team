@@ -110,8 +110,8 @@ check-deps() {
         fatal=1
     fi
 
-    # claude
-    if command -v "$CLAUDE_CMD" &>/dev/null; then
+    # claude (支持 alias)
+    if type "$CLAUDE_CMD" &>/dev/null; then
         echo "│ ✓ claude ($CLAUDE_CMD)"
     else
         echo "│ ✗ claude 命令未找到 [必需]"
@@ -198,8 +198,8 @@ check-deps() {
 _ai_quick_check() {
     local errors=()
 
-    command -v tmux &>/dev/null || errors+=("tmux")
-    command -v "$CLAUDE_CMD" &>/dev/null || errors+=("$CLAUDE_CMD")
+    type tmux &>/dev/null || errors+=("tmux")
+    type "$CLAUDE_CMD" &>/dev/null || errors+=("$CLAUDE_CMD")
     [ -d "$CODING_BASE" ] || errors+=("CODING_BASE 目录")
 
     if [ ${#errors[@]} -gt 0 ]; then
@@ -218,10 +218,10 @@ _ai_require_deps() {
     for dep in "$@"; do
         case "$dep" in
             tmux|git|at|watch)
-                command -v "$dep" &>/dev/null || missing+=("$dep")
+                type "$dep" &>/dev/null || missing+=("$dep")
                 ;;
             claude)
-                command -v "$CLAUDE_CMD" &>/dev/null || missing+=("claude")
+                type "$CLAUDE_CMD" &>/dev/null || missing+=("claude")
                 ;;
             coding_base)
                 [ -d "$CODING_BASE" ] || missing+=("CODING_BASE 目录")
