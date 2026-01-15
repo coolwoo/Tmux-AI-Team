@@ -84,6 +84,13 @@ cp bashrc-ai-automation-v2.sh ~/.ai-automation.sh
 # 在 ~/.bashrc 中添加 source 语句（自动检查避免重复）
 grep -q 'ai-automation.sh' ~/.bashrc || echo '[ -f ~/.ai-automation.sh ] && source ~/.ai-automation.sh' >> ~/.bashrc
 
+# 或
+# 删除现有文件（如果存在）
+rm -f ~/.ai-automation.sh
+
+# 创建符号链接
+ln -s ~/Coding/Tmux-AI-Team/bashrc-ai-automation-v2.sh ~/.ai-automation.sh
+
 # 重新加载
 source ~/.bashrc
 ```
