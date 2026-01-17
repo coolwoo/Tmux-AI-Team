@@ -349,23 +349,22 @@ Tmux-AI-Team/
 ├── bashrc-ai-automation-v2.sh     # Bash 函数 (核心)
 ├── AI-Project-Automation-Manual-v2.md  # 用户手册
 ├── .claude/
-│   ├── TMUX_AI.md                 # Agent 上下文模板 (自包含，217行)
+│   ├── TMUX_AI.md                 # Agent 上下文模板 (自包含，237行)
 │   └── commands/tmuxAI/           # Claude Code 斜杠命令
 │       ├── pm-oversight.md        # PM 监督模式
 │       ├── pm-*.md                # PM 槽位管理命令 (7个)
 │       ├── deploy-team.md         # 团队部署
 │       └── role-*.md              # 角色命令 (4个)
-├── tests/                         # 测试套件
-│   ├── check-syntax.sh            # 语法检查
-│   ├── check-functions.sh         # 函数存在性
-│   ├── check-files.sh             # 文件完整性
-│   └── unit/                      # 单元测试
-│       └── test-slot-design.sh    # 槽位设计验证 (44测试点)
+├── hooks/                         # Claude Code Hook 配置
+│   ├── CLAUDE.md                  # Hook 使用说明
+│   └── settings.template.json     # Stop Hook 配置模板
 └── docs/                          # 详细文档
     ├── 01-quick-start.md          # 快速开始
     ├── 03-pm-oversight-mode.md    # PM 监督模式手册
     ├── 04-agent-roles.md          # Agent 角色
-    └── 05-best-practices.md       # 最佳实践指南
+    ├── 05-best-practices.md       # 最佳实践指南
+    ├── pm常用提示词.md             # PM 常用提示词
+    └── CLAUDE.md                  # 文档模块说明
 ```
 
 ## License
