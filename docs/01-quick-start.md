@@ -200,6 +200,29 @@ add-window Server  # 创建 Server 窗口
 
 > **注意**: 脚本使用窗口名称（如 Claude）引用窗口，不受 `base-index` 影响。
 
+### tmux 推荐配置
+
+在状态栏显示 git 分支，方便在 Claude Code 界面随时查看当前分支：
+
+```bash
+# 添加到 ~/.tmux.conf
+# 左状态栏：会话名 + git 分支
+set -g status-left '#[fg=green][#S#[fg=yellow]:#(cd #{pane_current_path}; git branch --show-current 2>/dev/null || echo "-")#[fg=green]] '
+set -g status-left-length 50
+set -g status-interval 5
+```
+
+效果：
+```
+[my-project:main] 0:Claude*  1:Shell                    14:30
+            ↑ 分支
+```
+
+应用配置：
+```bash
+tmux source-file ~/.tmux.conf
+```
+
 ---
 
 ## 5. 选择使用模式
