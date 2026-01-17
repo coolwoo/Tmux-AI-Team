@@ -9,9 +9,21 @@
 你是运行在 **tmux 会话**中的 Claude Code Agent。
 
 **运行环境**：
-- 当前窗口：通过 `tmux display-message -p '#{window_name}'` 获取
-- 当前会话：通过 `tmux display-message -p '#{session_name}'` 获取
+- 当前窗口/会话：使用 `_get_tmux_info` 辅助函数获取（推荐）
 - Shell 环境已加载 Tmux-AI 工具函数
+
+```bash
+# 获取当前窗口名
+_get_tmux_info window
+
+# 获取当前会话名
+_get_tmux_info session
+
+# 获取两者 (session:window 格式)
+_get_tmux_info both
+```
+
+> **注意**：不推荐直接使用 `tmux display-message -p`，因为在 Hook 环境中可能获取错误的窗口信息。
 
 **角色识别**：你的角色由窗口名决定（零存储、自动推断）
 
@@ -266,7 +278,38 @@ schedule-checkin 60 "确认生产环境部署"
 
 ## 7. 可用工具函数
 
-### 7.1 窗口管理
+### 7.1 辅助函数
+
+#### _get_tmux_info - 获取 tmux 环境信息
+
+使用 `$TMUX_PANE` 环境变量确保在任何环境（包括 Hook 后台进程）中都能获取正确的窗口信息。
+
+```bash
+# 用法
+_get_tmux_info <type>
+
+# type 参数:
+# - session: 返回会话名
+# - window:  返回窗口名
+# - both:    返回 "session:window" 格式
+
+# 示例
+session=$(_get_tmux_info session)  # 例: "my-project"
+window=$(_get_tmux_info window)    # 例: "dev-1"
+target=$(_get_tmux_info both)      # 例: "my-project:dev-1"
+```
+
+**为什么需要这个函数？**
+
+| 场景 | `tmux display-message -p` | `_get_tmux_info` |
+|------|---------------------------|------------------|
+| 交互终端 | ✅ 正确 | ✅ 正确 |
+| Hook 后台进程 | ❌ 可能返回错误窗口 | ✅ 正确 |
+| 非活跃窗口 | ❌ 返回活跃窗口 | ✅ 正确 |
+
+**内部函数也使用它**：`tsc`, `get-role`, `schedule-checkin`, `read-next-note`, `_pm_stop_hook` 都已更新使用此函数。
+
+### 7.2 窗口管理
 
 ```bash
 # 创建/切换窗口
@@ -277,7 +320,7 @@ add-window <name>
 find-window <name>
 ```
 
-### 7.2 Agent 监控
+### 7.3 Agent 监控
 
 ```bash
 # 查看 Agent 状态
@@ -287,7 +330,7 @@ check-agent [session]
 monitor-snapshot [session]
 ```
 
-### 7.3 Git 自动化
+### 7.4 Git 自动化
 
 ```bash
 # 启动自动提交（每 N 分钟）
@@ -297,7 +340,7 @@ start-auto-commit [session] [分钟]
 stop-auto-commit [session]
 ```
 
-### 7.4 PM 专用（仅 PM 角色使用）
+### 7.5 PM 专用（仅 PM 角色使用）
 
 ```bash
 # 初始化槽位
@@ -320,6 +363,66 @@ pm-broadcast "<message>"
 
 # 查看操作历史
 pm-history
+```
+
+### 7.6 Hook 集成 (_pm_stop_hook)
+
+Claude Code 的 Stop 事件触发 `_pm_stop_hook` 函数，实现**推送式状态通知**。
+
+**工作原理**：
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                     Hook 工作流程                                    │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                      │
+│  1. Agent 输出 [STATUS:DONE]                                        │
+│           ↓                                                          │
+│  2. Claude 停止 → 触发 Stop Hook                                    │
+│           ↓                                                          │
+│  3. _pm_stop_hook 执行:                                             │
+│      ├─ 使用 _get_tmux_info 获取正确窗口名                          │
+│      ├─ 检查是否为已注册槽位                                         │
+│      ├─ 捕获 pane 输出，检测 [STATUS:*] 标记                        │
+│      └─ 调用 pm-mark 更新状态 + 向 PM 发送通知                       │
+│           ↓                                                          │
+│  4. PM 收到: "[Hook] dev-1 → done: 任务完成 (耗时: 15分钟)"         │
+│                                                                      │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+**关键技术点**：
+
+| 问题 | 解决方案 |
+|------|----------|
+| Hook 在后台进程执行，`tmux display-message` 返回错误窗口 | 使用 `_get_tmux_info` 基于 `$TMUX_PANE` 获取正确窗口 |
+| 槽位列表是逗号分隔的字符串 | 使用 `echo ",$slots," \| grep -q ",$window,"` 精确匹配 |
+| 相同状态重复通知 | 内置防抖机制，相同状态不重复发送 |
+
+**配置方法**：
+
+在目标项目创建 `.claude/settings.json`：
+
+```json
+{
+  "hooks": {
+    "Stop": [{
+      "hooks": [{
+        "type": "command",
+        "command": "bash -c 'source ~/.ai-automation.sh && _pm_stop_hook'",
+        "timeout": 10000
+      }]
+    }]
+  }
+}
+```
+
+**通知格式**：
+
+```
+[Hook] dev-1 → done: 用户登录 API 已完成 (耗时: 28分钟)
+[Hook] dev-2 → error: 依赖安装失败
+[Hook] qa → blocked: 等待 dev-1 完成
 ```
 
 ---

@@ -96,6 +96,87 @@
 | **_pm_stop_hook** | 推送式 | Claude Hook 事件触发 | **直接** |
 | **start-auto-commit** | 定时式 | 后台进程 + `sleep` 循环 | 否 |
 
+#### Hook 推送式通知架构
+
+```
+   Engineer Agent                   _pm_stop_hook                     PM Agent
+        │                                 │                               │
+        │  输出 [STATUS:DONE]              │                               │
+        ├─────────────────────────────────│                               │
+        │                                 │                               │
+        │  Claude Code Stop 事件          │                               │
+        │─────────────────────────────────▶                               │
+        │                                 │                               │
+        │                        1. 获取窗口信息                           │
+        │                           (via TMUX_PANE)                       │
+        │                                 │                               │
+        │                        2. 检测状态标记                           │
+        │                           [STATUS:*]                            │
+        │                                 │                               │
+        │                        3. 调用 pm-mark                          │
+        │                           更新状态变量                           │
+        │                                 │                               │
+        │                        4. tsc 发送通知                           │
+        │                                 │───────────────────────────────▶
+        │                                 │         "[Hook] dev-1 → done" │
+        ▼                                 ▼                               ▼
+```
+
+**核心流程**：
+
+1. **事件触发**：Agent 输出 `[STATUS:DONE/ERROR/BLOCKED]` 后，Claude Code 停止工作
+2. **Hook 执行**：Claude Code Stop 事件触发 `_pm_stop_hook`
+3. **状态检测**：Hook 捕获终端最近 30 行输出，正则匹配状态标记
+4. **状态更新**：调用 `pm-mark` 更新 tmux 环境变量，记录耗时
+5. **PM 通知**：向 PM 窗口（Claude/pm）发送格式化通知
+
+**防抖机制**：相同状态不重复通知，避免重复触发。
+
+#### TMUX_PANE 环境变量
+
+**问题背景**：
+
+当 Claude Code 的 Hook 在后台 tmux 窗口中执行时，`tmux display-message -p '#{window_name}'` 返回的是**当前活跃窗口**（如 PM 窗口），而非 Hook 实际所在的窗口。这会导致：
+
+- Hook 错误地认为自己在 PM 窗口中运行
+- 状态标记无法正确关联到 Engineer 槽位
+- PM 收不到状态推送通知
+
+**解决方案**：
+
+使用 `$TMUX_PANE` 环境变量。这是 tmux 为每个 pane 设置的唯一标识符（如 `%0`, `%1`），在 Hook 执行时保持不变。
+
+```bash
+# _get_tmux_info 辅助函数
+_get_tmux_info() {
+    local type="${1:-both}"
+    local pane_id="${TMUX_PANE:-}"
+
+    case "$type" in
+        session)
+            tmux display-message -t "$pane_id" -p '#{session_name}'
+            ;;
+        window)
+            tmux display-message -t "$pane_id" -p '#{window_name}'
+            ;;
+        both)
+            tmux display-message -t "$pane_id" -p '#{session_name}:#{window_name}'
+            ;;
+    esac
+}
+```
+
+**关键点**：通过 `-t "$pane_id"` 指定目标 pane，而非依赖当前活跃窗口。
+
+**影响的函数**：
+
+| 函数 | 使用场景 |
+|------|----------|
+| `_pm_stop_hook` | Hook 中获取正确的槽位名 |
+| `tsc` | 添加正确的消息来源前缀 |
+| `get-role` | 推断当前窗口角色 |
+| `schedule-checkin` | 确定唤醒目标窗口 |
+
 ### 3.4 应用层
 
 | 命令 | 类型 | 功能 |
@@ -180,7 +261,7 @@ schedule-checkin 60 "确认部署状态" my-project:Claude
 
 ```bash
 get-role() {
-    local window="${1:-$(tmux display-message -p '#{window_name}')}"
+    local window="${1:-$(_get_tmux_info window)}"  # 使用 _get_tmux_info 获取正确窗口名
     case "$window" in
         dev-*|dev)           echo "Developer" ;;
         qa-*|qa)             echo "QA" ;;

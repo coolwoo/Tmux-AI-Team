@@ -289,6 +289,28 @@ PM: 收到 "[Hook] dev-1 → done: 任务完成说明"
 }
 ```
 
+### 技术说明
+
+Hook 使用 `_get_tmux_info` 辅助函数获取正确的窗口信息：
+
+```bash
+# 使用 $TMUX_PANE 环境变量确保在 Hook 环境中也能获取正确的窗口名
+_get_tmux_info() {
+    local type="${1:-both}"  # session, window, 或 both
+    local pane_id="${TMUX_PANE:-}"
+    tmux display-message -t "$pane_id" -p '#{session_name}:#{window_name}'
+}
+```
+
+**为什么需要这个函数**：
+
+| 场景 | 直接调用 tmux | 使用 _get_tmux_info |
+|------|---------------|---------------------|
+| 前台窗口 | ✅ 正确 | ✅ 正确 |
+| 后台窗口 (Hook 环境) | ❌ 可能获取错误窗口 | ✅ 正确 |
+
+Hook 在后台窗口执行时，直接调用 `tmux display-message -p` 可能获取到当前活跃窗口而非 Hook 所在窗口。`_get_tmux_info` 通过 `$TMUX_PANE` 环境变量定位到正确的 pane。
+
 ### Hook 通知格式
 
 PM 收到的通知：
@@ -492,3 +514,4 @@ schedule-checkin 15 "检查进度"
 - [Agent 角色说明](04-agent-roles.md)
 - [自调度功能](06-self-scheduling.md)
 - [Hook 配置](../hooks/CLAUDE.md)
+- [PM 监督模式测试计划](pm-oversight-test-plan.md)

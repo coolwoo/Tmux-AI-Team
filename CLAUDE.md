@@ -240,6 +240,7 @@ graph LR
         fire["fire()"]
         addwin["add-window()"]
         tsc["tsc()"]
+        getinfo["_get_tmux_info()"]
     end
 
     subgraph PMSlots["PM 槽位管理"]
@@ -302,6 +303,26 @@ tsc() {
     [[ "$quiet" != true ]] && echo "✓ 已发送到 $target"
 }
 ```
+
+### Tmux 信息获取 (_get_tmux_info)
+
+在 Hook 环境中获取正确的 tmux 窗口/会话信息。解决后台窗口执行时获取错误窗口名的问题：
+
+```bash
+# 用法
+session=$(_get_tmux_info session)   # 获取会话名
+window=$(_get_tmux_info window)     # 获取窗口名
+both=$(_get_tmux_info both)         # 返回 session:window
+
+# 内部实现 - 使用 $TMUX_PANE 定位正确的 pane
+_get_tmux_info() {
+    local type="${1:-both}"
+    local pane_id="${TMUX_PANE:-}"
+    tmux display-message -t "$pane_id" -p '#{session_name}:#{window_name}'
+}
+```
+
+以下函数使用 `_get_tmux_info`：`tsc`、`get-role`、`schedule-checkin`、`read-next-note`、`_pm_stop_hook`
 
 ### 自调度 (schedule-checkin)
 
