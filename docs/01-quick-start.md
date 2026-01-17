@@ -31,8 +31,9 @@
 ### 2.1 获取代码
 
 ```bash
-git clone <repo-url> ~/Tmux-AI-Team
-cd ~/Tmux-AI-Team
+cd ~/Coding
+git clone <repo-url>
+cd Tmux-AI-Team
 ```
 
 ### 2.2 安装 Bash 函数

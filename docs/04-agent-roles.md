@@ -1,462 +1,282 @@
-# Agent 团队角色指南
+# Agent 角色指南
 
-本文档总结了 Agent 角色和 PM 槽位管理命令的用法和特点。
+> 📅 Last updated: 2026-01-17
 
-## 命令概览
+## 概述
 
-### 管理与角色命令
-
-| 命令 | 调用方式 | 用途 |
-|------|----------|------|
-| deploy-team | `/tmuxAI:deploy-team` | 根据项目规模部署 Agent 团队 |
-| pm-oversight | `/tmuxAI:pm-oversight` | PM 监督工程师执行 |
-| role-developer | `/tmuxAI:role-developer` | 开发工程师执行开发任务 |
-| role-devops | `/tmuxAI:role-devops` | DevOps 处理部署和基础设施 |
-| role-qa | `/tmuxAI:role-qa` | QA 工程师测试和质量保证 |
-| role-reviewer | `/tmuxAI:role-reviewer` | 代码审查员进行代码评审 |
-
-### PM 槽位管理命令 (v3.5)
-
-| 命令 | 调用方式 | 用途 |
-|------|----------|------|
-| pm-init | `/tmuxAI:pm-init` | 初始化 PM 槽位管理（默认创建 dev-1，可用 pm-add-slot 添加更多） |
-| pm-add-slot | `pm-add-slot <name>` | 添加新槽位（如 dev-2, qa） |
-| pm-remove-slot | `pm-remove-slot <name>` | 移除槽位（需确认或 -f 强制） |
-| pm-list-slots | `pm-list-slots` | 列出当前所有槽位 |
-| pm-assign | `/tmuxAI:pm-assign` | 分配任务到槽位 |
-| pm-status | `/tmuxAI:pm-status` | 查看槽位状态面板 |
-| pm-check | `/tmuxAI:pm-check` | 智能检测槽位状态 |
-| pm-mark | `/tmuxAI:pm-mark` | 手动标记槽位状态 |
-| pm-broadcast | `/tmuxAI:pm-broadcast` | 广播消息到工作中的槽位 |
-| pm-history | `/tmuxAI:pm-history` | 查看 PM 操作历史 |
-| pm-get-output | `pm-get-output <slot> [lines]` | 获取槽位最近输出 |
-| pm-wait-result | `pm-wait-result <slot> [timeout]` | 等待槽位完成并返回结果 |
-| pm-send-and-wait | `pm-send-and-wait <slot> <msg>` | 发送消息并等待结果 |
-
-> 详细的 PM 槽位管理使用说明见 [PM 监督模式手册](03-pm-oversight-mode.md#pm-槽位管理-v34)
+本文档介绍 Tmux-AI 支持的 Agent 角色及其使用方法。每个角色通过斜杠命令激活，赋予 Agent 特定的职责和工作方式。
 
 ---
 
-## 1. deploy-team (团队部署)
+## 角色命令速查
 
-**用途**: 根据项目规模自动部署合适的 Agent 团队
+| 角色 | 命令 | 用途 |
+|------|------|------|
+| Developer | `/tmuxAI:role-developer` | 开发工程师，实现功能和修复 Bug |
+| QA | `/tmuxAI:role-qa` | QA 工程师，测试和质量保证 |
+| DevOps | `/tmuxAI:role-devops` | DevOps 工程师，部署和基础设施 |
+| Reviewer | `/tmuxAI:role-reviewer` | 代码审查员，代码评审 |
 
-**调用方式**:
-```
-/tmuxAI:deploy-team <项目名称> [small|medium|large] [任务描述]
-```
+**使用方式**：
 
-**示例**:
 ```bash
-# 仅项目名（默认 medium 规模）
-/tmuxAI:deploy-team my-project
+# PM 通过 pm-assign 分配角色和任务
+/tmuxAI:pm-assign dev-1 role-developer "实现用户登录 API"
 
-# 指定规模
-/tmuxAI:deploy-team my-project large
-
-# 带任务描述
-/tmuxAI:deploy-team my-project medium 实现用户认证系统
+# 或直接在 Agent 窗口激活角色
+/tmuxAI:role-developer 实现用户登录 API
 ```
-
-**团队规模配置**:
-
-| 团队规模 | 适用场景 | 团队成员 | 周期 |
-|---------|---------|---------|------|
-| Small | 单一功能、Bug修复 | PM + Developer | 1-3天 |
-| Medium | 新功能开发、模块重构 | PM + Developer + QA | 1-2周 |
-| Large | 系统重构、新产品 | PM + 2 Dev + QA + DevOps + Reviewer | 1月+ |
-
-**团队结构图**:
-
-```
-小型项目:          中型项目:              大型项目:
-┌─────┐           ┌─────┐               ┌─────┐
-│ PM  │           │ PM  │               │ PM  │
-└──┬──┘           └──┬──┘               └──┬──┘
-   │              ┌──┴──┐           ┌─────┼─────┐
-   ▼              ▼     ▼           ▼     ▼     ▼
-┌─────┐        ┌─────┐ ┌────┐   ┌─────┐┌─────┐┌──────┐
-│ Dev │        │ Dev │ │ QA │   │Dev 1││Dev 2││DevOps│
-└─────┘        └─────┘ └────┘   └──┬──┘└──┬──┘└──────┘
-                                   └──┬───┘
-                                      ▼
-                                   ┌────┐
-                                   │ QA │
-                                   └────┘
-```
-
-**核心功能**:
-- 自动创建 tmux 会话
-- 配置窗口布局
-- 启动各角色 Agent
-- 建立通信渠道
 
 ---
 
-## 2. pm-oversight (PM 监督)
+## 角色协作架构
 
-**用途**: 作为项目经理监督工程师执行，定期检查进度
-
-**调用方式**:
 ```
-/tmuxAI:pm-oversight <项目名称> [任务描述]
-```
-
-**示例**:
-```bash
-# 仅项目名
-/tmuxAI:pm-oversight frontend-project
-
-# 带任务描述
-/tmuxAI:pm-oversight my-project 实现用户登录功能
+                    PM (Claude 窗口)
+                    监督 / 分配 / 验收
+                         │
+         ┌───────────────┼───────────────┐
+         │               │               │
+         ▼               ▼               ▼
+    Developer ◄────► Reviewer       DevOps
+      dev-*           reviewer       devops
+         │                              │
+         └──────────► QA ◄──────────────┘
+                      qa
 ```
 
-**核心职责**:
-- 制定监督计划
-- 监控服务器日志，检测错误
-- 与工程师 Agent 通信，获取进度
-- 逐个功能验收，对照任务要求检查
+**窗口名即角色**：
 
-**关键命令**:
-```bash
-# 获取监控快照
-monitor-snapshot <session>
-
-# 安排定期检查
-schedule-checkin 15 "检查进度"
-
-# 查看工程师输出
-tmux capture-pane -t <session>:Claude -p | tail -20
-
-# 发送消息给工程师
-tmux send-keys -t <session>:Claude "消息内容" C-m
-```
-
-**工作原则**:
-- 不打断正在工作的工程师
-- 逐个功能验收
-- 对照任务要求检查
-- 及时反馈错误信息
-
-**工程师状态判断**:
-
-| 状态 | 判断标准 | 响应策略 |
-|-----|---------|---------|
-| 活跃 (ACTIVE) | 最近 5 分钟有输出 | 不打断，继续观察 |
-| 空闲 (IDLE) | 超过 5 分钟无输出 | 询问进度或分配新任务 |
-| 阻塞 (BLOCKED) | 输出含 error/failed/blocked | 主动介入，提供帮助 |
+| 窗口名模式 | 自动识别角色 |
+|------------|--------------|
+| `dev-1`, `dev-2` | Developer |
+| `qa`, `qa-1` | QA |
+| `devops` | DevOps |
+| `reviewer` | Reviewer |
 
 ---
 
-## 3. role-developer (开发工程师)
+## 1. Developer (开发工程师)
 
-**用途**: 作为开发工程师执行具体开发任务
+**命令**: `/tmuxAI:role-developer <任务描述>`
 
-**调用方式**:
-```
-/tmuxAI:role-developer <任务描述>
-```
-
-**核心职责**:
+**职责**:
 - 编写高质量代码
 - 实现功能需求
 - 修复 Bug
 - 编写测试
-- 代码重构
 
 **Git 规范**:
 ```bash
-# 开始新任务前创建分支
+# 开始新任务
 git checkout -b feature/任务描述
 
-# 每 30 分钟提交一次
-git add -A
+# 定期提交
 git commit -m "Progress: 具体完成的内容"
 
 # 完成后打标签
 git tag stable-功能名-$(date +%Y%m%d)
 ```
 
-**状态汇报格式**:
+**状态汇报**:
 ```
-STATUS [Developer] [时间]
-完成:
-- 具体完成的任务 1
-- 具体完成的任务 2
-当前: 正在进行的工作
-阻塞: 遇到的问题 (如有)
-预计: 完成时间
-```
-
-**请求帮助格式**:
-```
-BLOCKED [Developer]
-问题: 具体描述
-已尝试:
-- 尝试的解决方案 1
-- 尝试的解决方案 2
-需要: 具体需要什么帮助
+[STATUS:DONE] 用户登录 API 已完成，包含注册、登录、JWT 验证
+[STATUS:ERROR] 数据库连接失败，缺少环境变量 DATABASE_URL
+[STATUS:BLOCKED] 等待 API 文档
 ```
 
 ---
 
-## 4. role-devops (DevOps 工程师)
+## 2. QA (QA 工程师)
 
-**用途**: 作为 DevOps 工程师处理部署和基础设施
+**命令**: `/tmuxAI:role-qa <测试任务描述>`
 
-**调用方式**:
-```
-/tmuxAI:role-devops <任务描述>
-```
-
-**核心职责**:
-- 部署和发布管理
-- CI/CD 流水线配置
-- 基础设施配置
-- 监控和告警
-- 性能优化
-- 安全加固
-
-**部署检查清单**:
-
-| 阶段 | 检查项 |
-|-----|-------|
-| 部署前 | 测试通过、配置更新、数据库迁移准备、备份完成、回滚计划 |
-| 部署中 | 服务切换、版本部署、迁移执行、配置应用、服务启动 |
-| 部署后 | 健康检查、功能验证、性能指标、日志检查、监控告警 |
-
-**沟通格式**:
-
-部署通知:
-```
-DEPLOY [DevOps] [环境: dev/staging/prod]
-版本: v1.2.3
-变更:
-- 变更 1
-- 变更 2
-时间: 部署时间
-影响: 预计影响范围
-回滚: 回滚方案
-```
-
-事故报告:
-```
-INCIDENT [DevOps] [严重程度: P1/P2/P3]
-状态: 调查中/已解决
-影响: 影响范围和用户数
-时间线:
-- HH:MM 发现问题
-- HH:MM 开始调查
-- HH:MM 定位原因
-- HH:MM 修复完成
-根因: 根本原因
-措施: 预防措施
-```
-
----
-
-## 5. role-qa (QA 工程师)
-
-**用途**: 作为 QA 工程师进行测试和质量保证
-
-**调用方式**:
-```
-/tmuxAI:role-qa <测试任务描述>
-```
-
-**核心职责**:
+**职责**:
 - 编写和执行测试用例
 - 发现和报告 Bug
 - 验证功能实现
-- 性能测试
-- 安全检查
+- 性能和安全检查
 
 **测试覆盖要求**:
 
 | 测试类型 | 覆盖范围 |
 |---------|---------|
-| 单元测试 | 核心逻辑 100% 覆盖 |
+| 单元测试 | 核心逻辑 100% |
 | 集成测试 | API 和模块交互 |
 | E2E 测试 | 关键用户流程 |
 | 边界测试 | 异常输入和边界条件 |
 
-**Bug 报告格式**:
+**状态汇报**:
 ```
-BUG [QA] [严重程度: HIGH/MED/LOW]
-标题: 简短描述
-复现步骤:
-1. 步骤 1
-2. 步骤 2
-3. 步骤 3
-期望结果: 应该发生什么
-实际结果: 实际发生什么
-环境: 测试环境信息
-附件: 截图/日志
-```
-
-**测试报告格式**:
-```
-TEST REPORT [QA] [时间]
-功能: 测试的功能名称
-结果: PASS/FAIL
-通过: X 个测试
-失败: Y 个测试
-覆盖率: Z%
-发现问题:
-- 问题 1
-- 问题 2
-建议: 改进建议
+[STATUS:DONE] 登录功能测试全部通过，覆盖率 92%
+[STATUS:ERROR] 发现高优先级 Bug：特殊字符密码无法登录
+[STATUS:BLOCKED] 等待 dev-1 修复登录 Bug
 ```
 
 ---
 
-## 6. role-reviewer (代码审查员)
+## 3. DevOps (DevOps 工程师)
 
-**用途**: 作为代码审查员进行代码评审
+**命令**: `/tmuxAI:role-devops <任务描述>`
 
-**调用方式**:
-```
-/tmuxAI:role-reviewer <审查范围/PR/分支>
-```
+**职责**:
+- 部署和发布管理
+- CI/CD 流水线配置
+- 基础设施配置
+- 监控和告警
 
-**特点**: 具有完整权限，可以创建审查报告文件和提交审查意见
+**部署检查清单**:
 
-**审查清单**:
-
-| 类别 | 检查项 |
+| 阶段 | 检查项 |
 |-----|-------|
-| 代码质量 | 可读性、命名、职责单一、无重复、注释适当 |
-| 逻辑正确性 | 逻辑完整、边界条件、错误处理、空值检查 |
-| 安全性 | SQL注入、XSS、输入验证、敏感数据、权限检查 |
-| 性能 | N+1查询、循环优化、资源释放、缓存使用 |
-| 可维护性 | 项目规范、测试覆盖、文档更新、技术债务 |
+| 部署前 | 测试通过、配置更新、备份完成、回滚计划 |
+| 部署中 | 版本部署、迁移执行、服务启动 |
+| 部署后 | 健康检查、功能验证、监控告警 |
+
+**状态汇报**:
+```
+[STATUS:DONE] v1.2.3 已成功部署到生产环境
+[STATUS:ERROR] 部署失败，已回滚到 v1.2.2
+[STATUS:BLOCKED] 等待 QA 测试通过
+```
+
+---
+
+## 4. Reviewer (代码审查员)
+
+**命令**: `/tmuxAI:role-reviewer <审查范围/PR/分支>`
+
+**职责**:
+- 代码风格检查
+- 逻辑正确性审查
+- 安全漏洞检测
+- 性能问题识别
 
 **问题优先级**:
-1. **必须修复 (MUST_FIX)**: 安全问题、Bug、崩溃风险
-2. **应该修复 (SHOULD_FIX)**: 性能问题、代码规范
-3. **建议改进 (SUGGESTION)**: 代码风格、可读性优化
 
-**审查意见格式**:
+| 优先级 | 类型 | 说明 |
+|--------|------|------|
+| MUST_FIX | 必须修复 | 安全问题、Bug、崩溃风险 |
+| SHOULD_FIX | 应该修复 | 性能问题、代码规范 |
+| SUGGESTION | 建议改进 | 代码风格、可读性优化 |
+
+**状态汇报**:
 ```
-REVIEW [Reviewer] [文件:行号]
-类型: MUST_FIX / SHOULD_FIX / SUGGESTION
-问题: 具体问题描述
-原因: 为什么这是问题
-建议: 推荐的修改方式
-示例: (可选) 代码示例
-```
-
-**审查总结格式**:
-```
-REVIEW SUMMARY [Reviewer]
-文件数: X
-问题数: Y (必须:A, 应该:B, 建议:C)
-总体评价: 通过/需修改/拒绝
-
-主要问题:
-1. 问题类别 1 (N 处)
-2. 问题类别 2 (M 处)
-
-亮点:
-- 做得好的地方
-
-建议:
-- 整体改进建议
+[STATUS:DONE] 代码审查通过，3 个改进建议已记录
+[STATUS:ERROR] 发现 2 个安全漏洞，必须修复后才能合并
+[STATUS:BLOCKED] 等待开发者修复 MUST_FIX 问题
 ```
 
 ---
 
-## 角色协作关系
+## 团队部署 (deploy-team)
+
+**命令**: `/tmuxAI:deploy-team <项目名称> [small|medium|large] [任务描述]`
+
+根据项目规模自动部署合适的 Agent 团队。
+
+### 团队规模配置
+
+| 规模 | 适用场景 | 团队成员 |
+|------|---------|---------|
+| small | Bug 修复、单一功能 | PM + dev-1 |
+| medium | 新功能、模块重构 | PM + dev-1 + qa |
+| large | 系统重构、新产品 | PM + dev-1 + dev-2 + qa + devops |
+
+### 示例
+
+```bash
+# 小型项目
+/tmuxAI:deploy-team my-project small 修复登录 Bug
+
+# 中型项目（默认）
+/tmuxAI:deploy-team my-project medium 实现用户认证系统
+
+# 大型项目
+/tmuxAI:deploy-team my-project large 重构订单系统
+```
+
+### 团队结构
 
 ```
-                    PM (监督/验收)
-                         │
-         ┌───────────────┼───────────────┐
-         │               │               │
-         ▼               ▼               ▼
-    Developer ◄────► Reviewer       DevOps
-         │                              │
-         └──────────► QA ◄──────────────┘
+小型:              中型:                  大型:
+┌─────┐           ┌─────┐               ┌─────┐
+│ PM  │           │ PM  │               │ PM  │
+└──┬──┘           └──┬──┘               └──┬──┘
+   │              ┌──┴──┐           ┌─────┼─────┐
+   ▼              ▼     ▼           ▼     ▼     ▼
+┌─────┐        ┌─────┐ ┌────┐   ┌─────┐┌─────┐┌──────┐
+│dev-1│        │dev-1│ │ qa │   │dev-1││dev-2││devops│
+└─────┘        └─────┘ └────┘   └──┬──┘└──┬──┘└──────┘
+                                   └──┬───┘
+                                      ▼
+                                   ┌────┐
+                                   │ qa │
+                                   └────┘
 ```
-
-**协作说明**:
-- **PM** 协调全局，分配任务，验收成果
-- **Developer** 实现功能，提交代码
-- **Reviewer** 审查代码质量 (按需调用)
-- **QA** 测试验证，报告 Bug
-- **DevOps** 负责部署和基础设施
-
-**通信方式**: 通过 tmux 消息传递实现跨窗口通信
 
 ---
 
-## 跨角色通信格式
+## 跨角色通信
 
-### Developer ↔ QA
+### 使用 tsc 发送消息
 
-```
-# Developer 请求测试
-REQUEST TEST [Developer → QA]
-功能: 功能名称
-分支: feature/xxx
-测试点: 需要测试的要点
+```bash
+# 消息自动带发送方窗口名
+tsc qa "API 开发完成，请开始测试"
+# qa 收到: [dev-1] API 开发完成，请开始测试
 
-# QA 报告 Bug
-BUG [QA → Developer] [严重程度: HIGH/MED/LOW]
-标题: 简短描述
-复现步骤: 1. ... 2. ...
-期望/实际结果: ...
-
-# QA 确认修复
-BUG VERIFIED [QA → Developer]
-Bug: #编号
-状态: 已修复/仍存在
+# 原始模式（不带前缀）
+tsc -r dev-1 "请继续下一个任务"
 ```
 
-### Developer ↔ Reviewer
+### 状态标记协议
 
+所有角色使用统一的状态标记格式汇报给 PM：
+
+| 标记 | 用途 |
+|------|------|
+| `[STATUS:DONE] 说明` | 任务完成 |
+| `[STATUS:ERROR] 说明` | 遇到错误 |
+| `[STATUS:BLOCKED] 说明` | 被阻塞 |
+| `[STATUS:PROGRESS] 说明` | 进度更新 |
+
+PM 通过 `/tmuxAI:pm-check` 或 Hook 自动检测这些标记。
+
+---
+
+## 最佳实践
+
+### 1. 遵循窗口命名规范
+
+创建槽位时使用标准命名，确保角色自动识别：
+- 开发: `dev-1`, `dev-2`
+- 测试: `qa`
+- 运维: `devops`
+- 审查: `reviewer`
+
+### 2. 使用状态标记
+
+每个任务完成时输出状态标记，便于 PM 自动检测：
 ```
-# Developer 请求审查
-REVIEW REQUEST [Developer → Reviewer]
-分支: feature/xxx
-变更: 主要变更列表
-关注点: 希望重点审查的部分
-
-# Reviewer 返回意见
-REVIEW RESULT [Reviewer → Developer]
-结论: APPROVED / CHANGES_REQUESTED / BLOCKED
-阻塞问题: (必须修复的列表)
-建议改进: (非阻塞的列表)
+[STATUS:DONE] 简要说明完成内容
 ```
 
-### DevOps ↔ Team
+### 3. 及时汇报阻塞
 
+遇到阻塞立即输出，让 PM 及时介入：
 ```
-# 部署通知
-DEPLOY NOTICE [DevOps → Team]
-环境: dev/staging/prod
-版本: v1.2.3
-状态: 开始/进行中/完成/回滚
-
-# 事故通知
-INCIDENT ALERT [DevOps → Team]
-严重程度: P1/P2/P3
-影响: 受影响的服务
-状态: 调查中/已定位/修复中/已解决
+[STATUS:BLOCKED] 等待 dev-2 完成数据库 Schema
 ```
 
-### QA/DevOps → PM
+### 4. 保持任务焦点
 
-```
-# 测试报告
-TEST REPORT [QA → PM]
-功能: 功能名称
-结果: PASS/FAIL
-建议: 是否可以发布
+专注于分配的任务，避免偏离范围。
 
-# 部署确认
-DEPLOY ACK [DevOps → PM]
-请求: 部署版本到环境
-状态: 已收到/准备就绪
-前置检查: 测试/审查/回滚方案
-```
+---
+
+## 相关文档
+
+- [PM 监督模式](03-pm-oversight-mode.md) - PM 槽位管理详解
+- [快速开始](01-quick-start.md) - 入门指南
+- [最佳实践](05-best-practices.md) - 使用技巧
