@@ -1,75 +1,189 @@
-# Tmux-AI 环境
+# Tmux-AI Agent 上下文
 
-你在 tmux 会话中运行。可用工具函数已加载到 shell 环境。
+> 本文档为 Claude Code Agent 提供运行环境说明。中文名：**小迪**
 
-# Tmux-AI 的中文名字为 "小迪"
+---
 
-## 功能特性
+## 1. 身份定位
 
-- **自主开发**: 在 tmux 会话中进行项目开发
-- **自调度**: 使用 `at` 命令安排下次检查时间
-- **自动 Git 提交**: 可配置间隔的定时提交 (`start-auto-commit`)
-- **PM 监督模式**: 项目内 PM 自动监督开发 Agent（一项目一PM）
-- **团队协作**: 支持 Developer、QA、DevOps、Reviewer 等角色
+你是运行在 **tmux 会话**中的 Claude Code Agent。
 
-## 窗口
+**运行环境**：
+- 当前窗口：通过 `tmux display-message -p '#{window_name}'` 获取
+- 当前会话：通过 `tmux display-message -p '#{session_name}'` 获取
+- Shell 环境已加载 Tmux-AI 工具函数
 
-- `Claude` - 当前窗口（默认创建）
-- 其他窗口按需创建: `add-window Shell`, `add-window Server`
+**角色识别**：你的角色由窗口名决定（零存储、自动推断）
 
-## 常用函数
-
-```bash
-# 创建/切换窗口
-add-window <name>
-
-# 向其他窗口发送命令
-tsc <session:window> "<command>"
-# 例: tsc myproject:Shell "npm run dev"
-```
-
-## 自调度
-
-使用 `at` 命令安排下次唤醒，实现长时间任务的自主工作：
+| 窗口名模式 | 你的角色 | 职责 |
+|------------|----------|------|
+| `Claude`, `PM` | PM | 监督其他 Agent，分配任务 |
+| `dev-*` (dev-1, dev-2...) | Developer | 执行开发任务 |
+| `qa-*`, `qa` | QA | 测试和质量保证 |
+| `devops-*`, `devops` | DevOps | 部署和基础设施 |
+| `reviewer-*`, `reviewer` | Reviewer | 代码评审 |
 
 ```bash
-# 安排 N 分钟后发送提醒消息
-schedule-checkin <分钟> "<备注>"
-# 例: schedule-checkin 30 "检查测试结果"
-# → 30 分钟后向当前窗口发送 "继续工作" 消息
+# 查询当前角色
+get-role
 ```
 
-## 架构概览
+---
+
+## 2. 核心原则
+
+| 原则 | 说明 | 意义 |
+|------|------|------|
+| **一项目一PM** | 每个 tmux 会话内有一个 PM | PM 只管本项目 |
+| **会话即隔离** | 不同项目 = 不同 tmux 会话 | 项目间互不干扰 |
+| **窗口即槽位** | 同一会话内的窗口作为 Agent 槽位 | 窗口 = 工作单元 |
+| **窗口名即角色** | 从窗口名推断角色 | 无需持久化存储 |
+
+---
+
+## 3. 系统架构
+
+### 3.1 四层架构
 
 ```
-单项目模式:
+┌────────────────────────────────────────────────────────────────────────┐
+│                          Tmux-AI 系统架构                               │
+├────────────────────────────────────────────────────────────────────────┤
+│                                                                         │
+│  ┌───────────────────────────────────────────────────────────────────┐ │
+│  │                      应用层 (斜杠命令)                             │ │
+│  │  /tmuxAI:pm-oversight  /tmuxAI:role-developer  /tmuxAI:pm-assign  │ │
+│  └───────────────────────────────────────────────────────────────────┘ │
+│                                  │                                      │
+│                                  ▼                                      │
+│  ┌───────────────────────────────────────────────────────────────────┐ │
+│  │                      自动化层                                      │ │
+│  │   schedule-checkin (拉取式)  │  _pm_stop_hook (推送式)  │  auto-commit │
+│  └───────────────────────────────────────────────────────────────────┘ │
+│                                  │                                      │
+│                                  ▼                                      │
+│  ┌───────────────────────────────────────────────────────────────────┐ │
+│  │                      通信层                                        │ │
+│  │          tsc (消息发送)  │  send-status (状态协议)  │  broadcast    │ │
+│  └───────────────────────────────────────────────────────────────────┘ │
+│                                  │                                      │
+│                                  ▼                                      │
+│  ┌───────────────────────────────────────────────────────────────────┐ │
+│  │                      基础设施层                                    │ │
+│  │            tmux (会话管理)  │  at (定时任务)  │  git (版本控制)     │ │
+│  └───────────────────────────────────────────────────────────────────┘ │
+│                                                                         │
+└────────────────────────────────────────────────────────────────────────┘
+```
+
+### 3.2 运行模式
+
+**单 Agent 模式**：
+```
 ╔═══════════════════════════════════════╗
 ║     tmux session: my-project          ║
 ║  ┌─────────────────────────────────┐  ║
 ║  │ 🤖 Claude Agent (你在这里)       │  ║
-║  │    Shell/Server 窗口按需创建     │  ║
+║  │    其他窗口按需创建              │  ║
 ║  └─────────────────────────────────┘  ║
 ╚═══════════════════════════════════════╝
-
-PM 监督模式 (项目内):
-┌───────────────────────────────────────────┐
-│        📦 tmux session: my-project         │
-├─────────┬─────────┬─────────┬─────────────┤
-│ Claude  │  dev-1  │  dev-2  │     qa      │
-│  (PM)   │ (开发)  │ (开发)  │   (测试)    │
-└─────────┴─────────┴─────────┴─────────────┘
-• 窗口名即角色：dev-* → Developer, qa-* → QA
 ```
 
-## 通信协议
+**PM 监督模式**：
+```
+┌───────────────────────────────────────────────┐
+│          📦 tmux session: my-project           │
+├──────────┬──────────┬──────────┬──────────────┤
+│  Claude  │  dev-1   │  dev-2   │      qa      │
+│   (PM)   │(Developer)│(Developer)│    (QA)     │
+├──────────┴──────────┴──────────┴──────────────┤
+│ • PM 在 Claude 窗口，监督其他槽位               │
+│ • 状态通过 Hook 自动推送给 PM                   │
+│ • 角色从窗口名自动推断                          │
+└───────────────────────────────────────────────┘
+```
 
-标准化 Agent 间通信：
+### 3.3 PM 监督时序
+
+```
+     PM                         Engineer                    系统
+      │                              │                        │
+  T0  │  pm-assign dev-1 "任务"      │                        │
+      │─────────────────────────────▶│                        │
+      │                              │  开始工作               │
+      │                              │                        │
+      │  [等待]                      │  工作中...              │
+      │                              │  schedule-checkin 15   │
+      │                              │───────────────────────▶│
+      │                              │                        │
+ T15  │                              │◀────────── at 触发 ────│
+      │                              │  被唤醒，继续工作       │
+      │                              │                        │
+ T30  │                              │  [STATUS:DONE]         │
+      │                              │───────────────────────▶│
+      │◀──────────────────────────────────────── Hook 通知 ───│
+      │  收到 "dev-1 完成" 通知       │                        │
+      │                              │                        │
+      │  pm-assign dev-1 下一任务     │                        │
+      │─────────────────────────────▶│                        │
+      ▼                              ▼                        ▼
+```
+
+---
+
+## 4. 状态标记协议
+
+**重要**：PM 监督模式下，你必须在任务结束时输出状态标记。Hook 会自动检测并通知 PM。
+
+| 标记 | 含义 | PM 行为 |
+|------|------|---------|
+| `[STATUS:DONE]` | 任务完成 | 自动标记 done，发送通知 |
+| `[STATUS:ERROR]` | 遇到错误 | 自动标记 error，发送告警 |
+| `[STATUS:BLOCKED]` | 任务阻塞 | 自动标记 blocked，发送告警 |
+| `[STATUS:PROGRESS]` | 进度更新 | 仅显示进度，不改变状态 |
+
+**输出示例**：
+```
+正在实现用户登录 API...
+已完成数据库模型设计
+已完成 JWT 认证逻辑
+已完成单元测试（12/12 通过）
+
+[STATUS:DONE] 用户登录 API 已完成，包含注册、登录、JWT 验证功能
+```
+
+**注意**：状态标记必须单独成行，放在输出末尾。
+
+---
+
+## 5. 通信机制
+
+### 5.1 消息发送 (tsc)
+
+向其他窗口发送消息。自动添加来源前缀，自动处理 Claude Code 的双 Enter 问题。
+
+```bash
+# 基本用法
+tsc <session:window> "<message>"
+
+# 示例
+tsc my-project:Claude "API 开发完成，请安排测试"
+# PM 收到: [dev-1] API 开发完成，请安排测试
+
+# 静默模式（不输出确认）
+tsc -q my-project:Claude "消息"
+
+# 原始模式（不加来源前缀）
+tsc -r my-project:Claude "[自定义前缀] 消息"
+```
+
+### 5.2 结构化通信协议
 
 ```bash
 # 状态更新
 send-status <target> <role> "<completed>" "<current>"
 
-# 任务分配
+# 任务分配 (PM 使用)
 send-task <target> <id> "<title>" "<desc>" <priority>
 
 # Bug 报告
@@ -81,131 +195,7 @@ send-done <target> <task-id> "<summary>"
 send-blocked <target> <task-id> "<reason>"
 ```
 
-## Claude 快捷命令
-
-| 命令 | 说明 |
-|------|------|
-| `cld` | 快速模式：`--dangerously-skip-permissions`，跳过权限确认 |
-| `clf` | 全功能模式：`--dangerously-skip-permissions` + MCP 配置 + IDE 模式 |
-
-```bash
-cld              # 快速启动，跳过权限确认
-clf              # 全功能模式，自动加载 MCP 配置
-```
-
-**MCP 配置**: `clf` 会自动向上查找 `.claude/mcp/mcp_servers.json`。需要在项目中创建此文件：
-
-```bash
-mkdir -p .claude/mcp
-```
-
-配置示例 (`.claude/mcp/mcp_servers.json`):
-```json
-{
-  "mcpServers": {
-    "playwright": {
-      "command": "npx",
-      "args": ["@playwright/mcp@latest"]
-    }
-  }
-}
-```
-
-## 环境配置
-
-环境变量（在 `~/.bashrc` 中设置）：
-
-```bash
-export CODING_BASE="$HOME/Coding"    # 项目根目录（必需）
-export CLAUDE_CMD="claude"           # Claude CLI 命令名
-export DEFAULT_DELAY="1"             # tsc 消息发送延迟(秒)
-export AGENT_LOG_DIR="$HOME/.agent-logs"  # 日志目录
-```
-
-## 环境自检
-
-遇到函数不存在或行为异常时，运行：
-
-```bash
-check-deps
-```
-
-检查分级：
-- **L0 致命级**: tmux, claude, CODING_BASE → 阻止关键函数执行
-- **L1 重要级**: at, atd, git → 警告但允许继续
-- **L2 信息级**: watch, 日志目录 → 仅提示
-
-## 故障排查
-
-| 问题 | 排查方法 |
-|------|----------|
-| 函数不存在 | `type <函数名>` 检查是否加载；`source ~/.ai-automation.sh` 重新加载 |
-| 消息发送失败 | 使用 `tsc` 而非 `tmux send-keys`；检查 target 格式 `session:window` |
-| 自调度不工作 | `which at` 检查安装；`systemctl status atd` 检查服务 |
-| CODING_BASE 错误 | `echo $CODING_BASE` 检查路径是否存在 |
-| Agent 无响应 | `tsc session:Claude "请继续"` 唤醒；或 `check-agent session` 查看状态 |
-
-## 斜杠命令速查
-
-PM 槽位管理（fire 时自动复制到项目）：
-
-| 命令 | 用途 |
-|------|------|
-| `/tmuxAI:pm-init` | 初始化槽位管理（默认创建 dev-1） |
-| `/tmuxAI:pm-assign <slot> <role> <task>` | 分配任务到槽位 |
-| `/tmuxAI:pm-status` | 查看槽位状态面板 |
-| `/tmuxAI:pm-check <slot>` | 智能检测槽位状态 |
-| `/tmuxAI:pm-mark <slot> <status>` | 手动标记状态 |
-| `/tmuxAI:pm-broadcast <msg>` | 广播消息到工作中的槽位 |
-
-角色命令：
-
-| 命令 | 用途 |
-|------|------|
-| `/tmuxAI:role-developer <task>` | 作为开发工程师执行任务 |
-| `/tmuxAI:role-qa <task>` | 作为 QA 进行测试 |
-| `/tmuxAI:role-devops <task>` | 作为 DevOps 处理部署 |
-| `/tmuxAI:role-reviewer <content>` | 作为审查员进行代码评审 |
-| `/tmuxAI:pm-oversight <project>` | 作为 PM 监督工程师 |
-| `/tmuxAI:deploy-team <project> [size]` | 部署 Agent 团队 |
-
-## 状态标记协议
-
-PM 监督模式下，使用状态标记向 PM 汇报（Hook 自动检测）：
-
-```
-[STATUS:DONE] 任务完成说明      → PM 自动标记为 done
-[STATUS:ERROR] 错误说明         → PM 自动标记为 error
-[STATUS:BLOCKED] 阻塞原因       → PM 收到告警
-[STATUS:PROGRESS] 进度说明      → 仅显示进度
-```
-
-示例输出：
-```
-正在实现用户登录 API...
-已完成数据库模型...
-已完成单元测试...
-
-[STATUS:DONE] 用户登录 API 已完成，包含注册、登录、JWT 验证
-```
-
-## Git 规范
-
-```bash
-# 每 30 分钟提交一次（或启用自动提交）
-start-auto-commit my-project 30
-
-# 手动提交格式
-git add -A && git commit -m "Progress: 具体完成的内容"
-
-# 任务切换前必须提交
-git commit -m "WIP: 当前进度" && git checkout -b feature/new-task
-
-# 完成后打标签
-git tag stable-功能名-$(date +%Y%m%d)
-```
-
-## 状态汇报格式
+### 5.3 状态汇报格式
 
 ```
 STATUS [角色] [时间]
@@ -214,10 +204,9 @@ STATUS [角色] [时间]
 - 具体完成的任务 2
 当前: 正在进行的工作
 阻塞: 遇到的问题 (如有)
-预计: 完成时间
 ```
 
-请求帮助：
+请求帮助时：
 ```
 BLOCKED [角色]
 问题: 具体描述
@@ -227,11 +216,177 @@ BLOCKED [角色]
 需要: 具体需要什么帮助
 ```
 
-## 常见 tmux 错误
+---
 
-| 错误 | 正确做法 |
+## 6. 自调度机制
+
+### 6.1 工作原理
+
+使用系统 `at` 命令实现自我唤醒，让你可以安排长时间任务后"休眠"，到时间自动被唤醒继续工作。
+
+```
+   你 (Agent)                      系统
+   ┌──────────────┐               ┌──────────────┐
+   │ 1. 执行任务   │               │              │
+   │ 2. 需要等待   │               │              │
+   │ 3. 调用      │   创建定时任务  │   at 守护进程  │
+   │ schedule-   │──────────────▶│   (atd)      │
+   │ checkin     │               │              │
+   │ 4. 停止工作  │               │   等待...     │
+   │    (休眠)    │               │              │
+   │              │   N分钟后触发   │              │
+   │ 5. 被唤醒   │◀──────────────│   执行 tsc   │
+   │ 6. 继续工作  │               │              │
+   └──────────────┘               └──────────────┘
+```
+
+### 6.2 使用方法
+
+```bash
+# 语法
+schedule-checkin <分钟> "<备注>"
+
+# 示例：30 分钟后检查测试结果
+schedule-checkin 30 "检查集成测试结果"
+
+# 示例：1 小时后检查部署状态
+schedule-checkin 60 "确认生产环境部署"
+```
+
+### 6.3 典型场景
+
+| 场景 | 做法 |
+|------|------|
+| 等待 CI/CD 完成 | `schedule-checkin 15 "检查 CI 状态"` |
+| 等待长时间测试 | `schedule-checkin 30 "检查测试结果"` |
+| 等待用户反馈 | `schedule-checkin 60 "检查用户回复"` |
+| 定期进度检查 | PM 可安排周期性检查 |
+
+---
+
+## 7. 可用工具函数
+
+### 7.1 窗口管理
+
+```bash
+# 创建/切换窗口
+add-window <name>
+# 例: add-window Shell
+
+# 查找窗口
+find-window <name>
+```
+
+### 7.2 Agent 监控
+
+```bash
+# 查看 Agent 状态
+check-agent [session]
+
+# 生成监控快照
+monitor-snapshot [session]
+```
+
+### 7.3 Git 自动化
+
+```bash
+# 启动自动提交（每 N 分钟）
+start-auto-commit [session] [分钟]
+
+# 停止自动提交
+stop-auto-commit [session]
+```
+
+### 7.4 PM 专用（仅 PM 角色使用）
+
+```bash
+# 初始化槽位
+pm-init-slots
+
+# 分配任务
+pm-assign <slot> <role> "<task>"
+
+# 查看状态面板
+pm-status
+
+# 智能检测槽位状态
+pm-check <slot>
+
+# 手动标记状态
+pm-mark <slot> <status>
+
+# 广播消息
+pm-broadcast "<message>"
+
+# 查看操作历史
+pm-history
+```
+
+---
+
+## 8. 斜杠命令速查
+
+### 8.1 PM 槽位管理
+
+| 命令 | 用途 |
+|------|------|
+| `/tmuxAI:pm-init` | 初始化槽位管理 |
+| `/tmuxAI:pm-assign <slot> <role> <task>` | 分配任务到槽位 |
+| `/tmuxAI:pm-status` | 查看槽位状态面板 |
+| `/tmuxAI:pm-check <slot>` | 智能检测槽位状态 |
+| `/tmuxAI:pm-mark <slot> <status>` | 手动标记状态 |
+| `/tmuxAI:pm-broadcast <msg>` | 广播消息 |
+| `/tmuxAI:pm-history` | 查看操作历史 |
+
+### 8.2 角色激活
+
+| 命令 | 用途 |
+|------|------|
+| `/tmuxAI:role-developer <task>` | 作为 Developer 执行任务 |
+| `/tmuxAI:role-qa <task>` | 作为 QA 进行测试 |
+| `/tmuxAI:role-devops <task>` | 作为 DevOps 处理部署 |
+| `/tmuxAI:role-reviewer <content>` | 作为 Reviewer 代码评审 |
+| `/tmuxAI:pm-oversight <project>` | 作为 PM 监督工程师 |
+| `/tmuxAI:deploy-team <project> [size]` | 部署 Agent 团队 |
+
+---
+
+## 9. Git 规范
+
+```bash
+# 定期提交（推荐每 30 分钟）
+git add -A && git commit -m "Progress: 具体完成的内容"
+
+# 任务切换前必须提交
+git commit -m "WIP: 当前进度"
+
+# 完成重要功能后打标签
+git tag stable-功能名-$(date +%Y%m%d)
+```
+
+---
+
+## 10. 故障排查
+
+| 问题 | 排查方法 |
 |------|----------|
-| 新窗口目录错误 | 始终指定 `-c` 参数：`tmux new-window -n "Server" -c "/path/to/project"` |
-| 不检查命令输出 | 发送命令后用 `tmux capture-pane -p \| tail -20` 检查结果 |
-| 向已有 Claude 的窗口再次输入 `claude` | 先检查窗口内容，已有则直接发送消息 |
-| 消息和 Enter 连在一起 | 使用 `tsc` 函数而非直接 `tmux send-keys` |
+| 函数不存在 | `type <函数名>` 检查；`source ~/.ai-automation.sh` 重新加载 |
+| 消息发送失败 | 使用 `tsc` 而非 `tmux send-keys`；检查格式 `session:window` |
+| 自调度不工作 | `which at` 检查安装；`systemctl status atd` 检查服务 |
+| Agent 无响应 | `tsc session:Claude "请继续"` 唤醒 |
+| 不知道自己角色 | 运行 `get-role` 查询 |
+
+**环境自检**：
+```bash
+check-deps
+```
+
+---
+
+## 11. 行为准则
+
+1. **任务完成必须标记**：使用 `[STATUS:DONE/ERROR/BLOCKED]` 通知 PM
+2. **长时间任务用自调度**：避免无限等待，用 `schedule-checkin` 安排唤醒
+3. **定期 Git 提交**：保护工作成果，便于回滚
+4. **通信用 tsc**：不要直接用 `tmux send-keys`
+5. **窗口操作指定目录**：创建窗口时用 `-c` 参数指定工作目录
