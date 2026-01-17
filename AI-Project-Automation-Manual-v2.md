@@ -8,6 +8,7 @@
 | [PM 监督模式](docs/03-pm-oversight-mode.md) | 自动化项目管理，无人值守开发 |
 | [Agent 角色](docs/04-agent-roles.md) | 斜杠命令、角色模板 |
 | [最佳实践](docs/05-best-practices.md) | Git 规范、通信协议、反模式指南 |
+| [PM 常用提示词](docs/pm常用提示词.md) | PM 常用操作的提示词参考 |
 
 ## 核心原则 (v2.6 更新)
 
@@ -105,6 +106,7 @@ sudo apt install at && sudo systemctl enable --now atd
 | 命令 | 说明 |
 |------|------|
 | `fire <project>` | 快速启动项目（显示项目类型） |
+| `add-window <name>` | 按需创建窗口 (如 Shell、Server) |
 | `tsc <target> <msg>` | 发送消息到 Claude |
 | `check-agent [session]` | 查看 Agent 状态 |
 | `monitor-agent [session]` | 实时监控 Agent |
@@ -112,6 +114,18 @@ sudo apt install at && sudo systemctl enable --now atd
 | `find-window <name>` | 按名称查找窗口 |
 | `stop-project [session]` | 停止项目 |
 | `goto <session>` | 切换会话 |
+
+### Claude 快捷命令
+
+| 命令 | 说明 |
+|------|------|
+| `cld` | 快速模式：`--dangerously-skip-permissions`，跳过权限确认 |
+| `clf` | 全功能模式：`--dangerously-skip-permissions` + MCP + IDE 模式 |
+
+```bash
+cld              # 快速启动，跳过权限确认
+clf              # 全功能模式，自动加载 .claude/mcp/mcp_servers.json
+```
 
 ### 消息发送
 
@@ -187,6 +201,9 @@ tsc -r my-project:Claude "[PM 广播] 准备发布"
 | 命令 | 说明 |
 |------|------|
 | `pm-init-slots` | 初始化 3 个槽位 (dev-1, dev-2, qa) |
+| `pm-add-slot <name>` | 添加新槽位 |
+| `pm-remove-slot <name>` | 移除槽位 |
+| `pm-list-slots` | 列出所有槽位 |
 | `pm-assign <slot> <role> <task>` | 分配任务到槽位 |
 | `pm-status` | 查看槽位状态面板（含角色列） |
 | `pm-check <slot>` | 智能检测槽位状态 (解析 [STATUS:*]) |
@@ -194,6 +211,26 @@ tsc -r my-project:Claude "[PM 广播] 准备发布"
 | `pm-broadcast <msg>` | 广播消息到工作中的槽位 |
 | `pm-history` | 查看 PM 操作历史 |
 | `get-role [window]` | 从窗口名推断角色 |
+
+### Stop Hook 集成
+
+Claude Code Stop 事件触发状态推送，实现 Agent → PM 的自动通知：
+
+```bash
+# 配置方式：复制模板到项目
+cp hooks/settings.template.json /path/to/project/.claude/settings.json
+```
+
+**状态标记协议** - Agent 在输出中使用标记向 PM 汇报：
+
+| 标记 | 含义 | PM 行为 |
+|------|------|---------|
+| `[STATUS:DONE]` | 任务完成 | 自动标记 done，发送通知 |
+| `[STATUS:ERROR]` | 遇到错误 | 自动标记 error，发送告警 |
+| `[STATUS:BLOCKED]` | 任务阻塞 | 自动标记 blocked，发送告警 |
+| `[STATUS:PROGRESS]` | 进度更新 | 仅显示进度，不改变状态 |
+
+> 详见 [hooks/CLAUDE.md](hooks/CLAUDE.md)
 
 **pm-status 输出示例**:
 
@@ -287,9 +324,11 @@ pm-status
 
 ```bash
 # ~/.bashrc 中设置
-export CODING_BASE="$HOME/Projects"  # 项目目录
+export CODING_BASE="$HOME/Projects"  # 项目目录（必需）
 export CLAUDE_CMD="claude"           # Claude 命令
 export DEFAULT_DELAY="1"             # 消息延迟(秒)
+export AGENT_LOG_DIR="$HOME/.agent-logs"  # 日志目录
+export TMUX_AI_TEAM_DIR="$HOME/Coding/Tmux-AI-Team"  # 工具包目录
 ```
 
 ---
