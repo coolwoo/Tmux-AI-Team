@@ -33,28 +33,7 @@ graph TB
     end
 
     subgraph Hooks["🔗 hooks/"]
-        STOP_HOOK["pm-stop-hook.sh<br/>状态推送 (deprecated)"]
-        HOOK_TEMPLATE["settings.template.json"]
-        HOOK_DOC["CLAUDE.md<br/>配置文档"]
-    end
-
-    subgraph Tests["🧪 tests/"]
-        T_SYNTAX["check-syntax.sh"]
-        T_FUNCS["check-functions.sh"]
-        T_FILES["check-files.sh"]
-        T_ROLE["check-role-status-section.sh"]
-        subgraph TestDirs["测试分类"]
-            subgraph T_UNIT["unit/"]
-                T_SLOT["test-slot-design.sh<br/>槽位设计验证"]
-            end
-            T_INTEG["integration/"]
-            T_EDGE["edge/"]
-        end
-    end
-
-    subgraph Prompts["💡 prompts/"]
-        P_HOOK["hook整合.md"]
-        P_VERIFY["新功能验证方案.md"]
+        HOOK_TEMPLATE["settings.template.json<br/>Stop Hook 配置模板"]
     end
 
     subgraph Claude[".claude/"]
@@ -68,14 +47,14 @@ graph TB
                 PMSLOTS["pm-*.md (7个)<br/>槽位管理 v3.5"]
             end
             subgraph Other["其他命令组"]
-                SECURITY["security/ (9个)"]
-                DOC["documentation/ (2个)"]
-                ZCF["zcf/ (8个)"]
-                ANTHRO["anthropic/ (3个)"]
-                ARCH["architecture/ (1个)"]
-                PROMPTENG["promptengineering/ (2个)"]
-                REFACTOR["refactor/ (1个)"]
-                CLEANUP["cleanup/ (1个)"]
+                SECURITY["security/ (10个)"]
+                DOC["documentation/ (3个)"]
+                ZCF["zcf/ (9个)"]
+                ANTHRO["anthropic/ (4个)"]
+                ARCH["architecture/ (2个)"]
+                PROMPTENG["promptengineering/ (3个)"]
+                REFACTOR["refactor/ (2个)"]
+                CLEANUP["cleanup/ (2个)"]
             end
         end
 
@@ -89,8 +68,6 @@ graph TB
 
     Root --> Docs
     Root --> Hooks
-    Root --> Tests
-    Root --> Prompts
     Root --> Claude
 ```
 
@@ -162,14 +139,12 @@ flowchart TB
 
 | 模块 | 路径 | 说明 |
 |------|------|------|
-| 核心函数库 | [`bashrc-ai-automation-v2.sh`](bashrc-ai-automation-v2.sh) | 所有 Bash 函数定义 (约 2291 行) |
+| 核心函数库 | [`bashrc-ai-automation-v2.sh`](bashrc-ai-automation-v2.sh) | 所有 Bash 函数定义 (约 2355 行) |
 | Agent 上下文 | [`.claude/TMUX_AI.md`](.claude/TMUX_AI.md) | fire 启动时复制到目标项目 |
-| 斜杠命令 | [`.claude/commands/tmuxAI/`](.claude/commands/tmuxAI/) | PM、团队部署、角色命令 (13 个) |
+| 斜杠命令 | [`.claude/commands/tmuxAI/`](.claude/commands/tmuxAI/) | PM、团队部署、角色命令 (14 个) |
 | 专家 Agents | [`.claude/agents/`](.claude/agents/) | 后端架构、代码搜索等专家 (12 个) |
-| Hook 集成 | [`hooks/`](hooks/) | Claude Code Hook 配置模板，实现状态推送（核心逻辑在 `_pm_stop_hook` 函数） |
-| 测试脚本 | [`tests/`](tests/) | 语法检查、函数存在性验证、槽位设计测试 (5 个) |
-| 用户文档 | [`docs/`](docs/) | 快速开始、使用手册、最佳实践 (6 个) |
-| 设计文档 | [`prompts/`](prompts/) | Hook 集成设计、功能验证方案 |
+| Hook 集成 | [`hooks/`](hooks/) | Claude Code Hook 配置模板（核心逻辑在 `_pm_stop_hook` 函数） |
+| 用户文档 | [`docs/`](docs/) | 快速开始、使用手册、最佳实践 (5 个) |
 
 ## 开发与测试
 
@@ -188,12 +163,6 @@ bash -c 'source bashrc-ai-automation-v2.sh; fire'  # 列出可用项目
 
 # 语法检查
 bash -n bashrc-ai-automation-v2.sh
-
-# 运行测试套件
-bash tests/check-syntax.sh        # 语法检查
-bash tests/check-functions.sh     # 函数存在性
-bash tests/check-files.sh         # 文件完整性
-bash tests/unit/test-slot-design.sh  # 槽位设计验证 (44 测试点)
 ```
 
 ## 核心概念
@@ -407,6 +376,8 @@ Claude Code Stop 事件触发的 Hook 函数，实现推送式状态通知：
 - 内置防抖机制（相同状态不重复通知）
 
 详细配置请参考 [`hooks/CLAUDE.md`](hooks/CLAUDE.md)。
+
+> **注意**: Hook 的核心逻辑在 `bashrc-ai-automation-v2.sh` 的 `_pm_stop_hook` 函数中，`hooks/settings.template.json` 仅作为配置模板。
 
 ## 配置
 
