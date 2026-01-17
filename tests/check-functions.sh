@@ -18,6 +18,7 @@ FUNCTIONS=(
     "pm-broadcast"
     "pm-history"
     "_pm_log"
+    "get-role"
 )
 
 echo "=== 检查 Bash 函数 ==="

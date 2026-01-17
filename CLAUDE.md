@@ -1,18 +1,17 @@
 # CLAUDE.md
 
-> 📅 Last updated: 2026-01-11
+> 📅 Last updated: 2026-01-17
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## 项目概述
 
-AI 项目自动化工具包 - 将 tmux 与 Claude Code 集成，实现自主多 Agent 开发工作流。
+AI 项目自动化工具包 - 将 tmux 与 Claude Code 集成，实现自主开发工作流。
 
 核心功能：
 - 在 tmux 会话中启动 Claude Code Agent 进行自主开发
 - 自调度：Agent 使用 `at` 命令安排下次检查时间
-- 多 Agent 通信：通过 tmux 消息传递实现跨会话通信
-- PM 监督模式：AI 项目经理自动监督 Engineer Agent
+- PM 监督模式：项目内 PM 自动监督 Engineer Agent（一项目一PM）
 - 环境自检：自动检测依赖并提供安装建议
 
 ## 项目结构图
@@ -27,7 +26,6 @@ graph TB
 
     subgraph Docs["📚 docs/"]
         D01["01-quick-start.md"]
-        D02["02-multi-project-mode.md"]
         D03["03-pm-oversight-mode.md"]
         D04["04-agent-roles.md"]
         D05["05-best-practices.md"]
@@ -134,59 +132,37 @@ flowchart TB
     SCHED --> AT
 ```
 
-### 多 Agent 模式
+### PM 监督模式 (项目内)
 
 ```mermaid
 flowchart TB
-    subgraph Orchestrator["👤 协调者 (Orchestrator)"]
-        OPS["监控状态<br/>协调依赖<br/>分配任务"]
-    end
-
-    subgraph Agents["Agent 会话池"]
-        subgraph S1["frontend"]
-            A1["🤖 Claude"]
+    subgraph Session["📦 tmux session: my-project"]
+        subgraph Windows["窗口"]
+            PM["🎯 Claude (PM)<br/>pm-init-slots<br/>pm-status"]
+            DEV1["👷 dev-1 (Developer)<br/>/tmuxAI:role-developer"]
+            DEV2["👷 dev-2 (Developer)"]
+            QA["🧪 qa (QA)<br/>/tmuxAI:role-qa"]
         end
-        subgraph S2["backend"]
-            A2["🤖 Claude"]
-        end
-        subgraph S3["mobile"]
-            A3["🤖 Claude"]
-        end
-    end
-
-    OPS -->|"tsc/send-to-agent"| A1
-    OPS -->|"tsc/send-to-agent"| A2
-    OPS -->|"tsc/send-to-agent"| A3
-    OPS -->|"broadcast"| Agents
-
-    A1 <-->|"跨项目协调"| A2
-```
-
-### PM 监督模式
-
-```mermaid
-flowchart LR
-    subgraph PM_Session["PM 会话"]
-        PM["🎯 PM Agent<br/>/tmuxAI:pm-oversight"]
-    end
-
-    subgraph Eng_Session["Engineer 会话"]
-        ENG["👷 Engineer Agent<br/>/tmuxAI:role-developer"]
         HOOK["🔗 Stop Hook"]
     end
 
-    PM -->|"任务分配<br/>tsc/pm-assign"| ENG
-    PM -->|"进度查询<br/>pm-get-output"| ENG
-    ENG -->|"[STATUS:*]"| HOOK
-    HOOK -->|"状态推送<br/>(自动)"| PM
-    ENG -.->|"手动汇报<br/>send-status"| PM
+    PM -->|"pm-assign<br/>pm-broadcast"| DEV1
+    PM -->|"pm-assign"| DEV2
+    PM -->|"pm-assign"| QA
+    DEV1 -->|"[STATUS:*]"| HOOK
+    HOOK -->|"状态推送"| PM
 ```
+
+**核心原则**:
+- 一项目一PM：每个 tmux 会话内有一个 PM
+- 窗口即槽位：同一会话内的窗口作为 Agent 槽位
+- 窗口名即角色：从窗口名自动推断角色 (`get-role`)
 
 ## 模块索引
 
 | 模块 | 路径 | 说明 |
 |------|------|------|
-| 核心函数库 | [`bashrc-ai-automation-v2.sh`](bashrc-ai-automation-v2.sh) | 所有 Bash 函数定义 (约 2300 行) |
+| 核心函数库 | [`bashrc-ai-automation-v2.sh`](bashrc-ai-automation-v2.sh) | 所有 Bash 函数定义 (约 2291 行) |
 | Agent 上下文 | [`.claude/TMUX_AI.md`](.claude/TMUX_AI.md) | fire 启动时复制到目标项目 |
 | 斜杠命令 | [`.claude/commands/tmuxAI/`](.claude/commands/tmuxAI/) | PM、团队部署、角色命令 (13 个) |
 | 专家 Agents | [`.claude/agents/`](.claude/agents/) | 后端架构、代码搜索等专家 (12 个) |
@@ -450,3 +426,7 @@ export AGENT_LOG_DIR="$HOME/.agent-logs"  # Agent 日志目录（PM 操作日志
 - 使用 `for` 循环替代 `while read` 管道可避免此问题
 - tmux 窗口创建时需指定 `-c` 参数确保正确的工作目录
 - `fire` 启动时会自动复制 Agent 上下文和斜杠命令到目标项目
+
+## 引用上下文
+
+@.claude/TMUX_AI.md

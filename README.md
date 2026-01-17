@@ -1,14 +1,13 @@
 # Tmux-AI-Team
 
-AI 项目自动化工具包 - 将 tmux 与 Claude Code 集成，实现自主多 Agent 开发工作流。
+AI 项目自动化工具包 - 将 tmux 与 Claude Code 集成，实现自主开发工作流。
 
 ## 功能特性
 
 - **自主开发**: 在 tmux 会话中启动 Claude Code Agent 进行项目开发
 - **自调度**: Agent 可使用 `at` 命令安排自己的下次检查时间
-- **多 Agent 通信**: 通过 tmux 消息传递实现跨会话通信
 - **自动 Git 提交**: 可配置间隔的定时提交
-- **PM 监督模式**: AI 项目经理自动监督开发 Agent
+- **PM 监督模式**: 项目内 PM 自动监督开发 Agent（一项目一PM）
 - **团队协作**: 支持 Developer、QA、DevOps、Reviewer 等角色
 - **环境自检**: 自动检测依赖并提供系统对应的安装建议
 - **多设备同步**: 通过 SSH + tmux 在任意设备上监控和操作 Agent
@@ -172,9 +171,6 @@ CODING_BASE=~/Projects fire my-app
 ### 查看 Agent 状态
 
 ```bash
-# 列出所有活跃 Agent
-list-agents
-
 # 检查特定 Agent
 check-agent my-project
 
@@ -194,8 +190,8 @@ watch-health 15
 # 向 Agent 发送消息
 tsc my-project:Claude "请实现用户登录功能"
 
-# 广播到所有 Agent
-broadcast "准备发布，请完成当前任务"
+# 向槽位广播（PM 模式内）
+pm-broadcast "准备发布，请完成当前任务"
 ```
 
 ## 使用模式
@@ -239,28 +235,6 @@ claude
 ╚═══════════════════════════════════════════════════════════╝
 ```
 
-### 多项目模式 (实验性)
-
-> **注意**: 此模式尚未经过严格测试，建议优先使用 PM 监督模式。
-
-你作为协调者管理多个 Agent：
-
-```bash
-# 启动多个项目
-fire frontend
-fire backend
-fire mobile
-
-# 协调工作
-tsc frontend:Claude "请等待 backend API 完成"
-tsc backend:Claude "请优先完成用户认证接口"
-
-# 静默模式（不输出确认信息）
-tsc -q frontend:Claude "后台消息"
-```
-
-详见 [多项目模式手册](docs/02-multi-project-mode.md)
-
 ## 核心命令
 
 | 命令 | 说明 |
@@ -268,13 +242,12 @@ tsc -q frontend:Claude "后台消息"
 | `check-deps` | 检查依赖并显示安装建议 |
 | `fire <project>` | 快速启动项目 |
 | `add-window <name>` | 按需创建窗口 (如 Shell、Server) |
-| `tsc <target> <msg>` | 发送消息到 Claude（默认输出确认信息） |
+| `tsc <target> <msg>` | 发送消息到 Claude（自动添加发送方前缀） |
 | `tsc -q <target> <msg>` | 静默模式发送消息 |
-| `send-to-agent` | `tsc` 的别名 |
+| `tsc -r <target> <msg>` | 原始模式（不加前缀） |
+| `get-role [window]` | 从窗口名推断角色 |
 | `check-agent [session]` | 查看 Agent 状态 |
 | `monitor-snapshot [session]` | 生成监控快照 |
-| `list-agents` | 列出所有 Agent |
-| `broadcast <msg>` | 广播消息 |
 | `schedule-checkin <分钟> <备注>` | 调度下次检查 |
 | `start-auto-commit [session] [分钟]` | 启动自动提交 |
 | `system-health` | 检查所有会话的健康状态 |
@@ -365,7 +338,6 @@ clean-agent-logs 30
 - [快速开始](docs/01-quick-start.md)
 - [PM 监督模式](docs/03-pm-oversight-mode.md) ⭐ 推荐
 - [Agent 角色](docs/04-agent-roles.md)
-- [多项目模式](docs/02-multi-project-mode.md) (实验性)
 - [最佳实践](docs/05-best-practices.md)
 
 ## 项目结构
@@ -391,7 +363,6 @@ Tmux-AI-Team/
 │       └── test-slot-design.sh    # 槽位设计验证 (44测试点)
 └── docs/                          # 详细文档
     ├── 01-quick-start.md          # 快速开始
-    ├── 02-multi-project-mode.md   # 多项目模式手册
     ├── 03-pm-oversight-mode.md    # PM 监督模式手册
     ├── 04-agent-roles.md          # Agent 角色
     └── 05-best-practices.md       # 最佳实践指南

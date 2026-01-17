@@ -238,9 +238,8 @@ send-bug dev:Claude HIGH "登录失败" "输入正确密码后点击登录" "跳
 ```
 
 - Developer 只向 PM 汇报
-- PM 汇总后向 Orchestrator 汇报
 - 跨职能沟通通过 PM 协调
-- 紧急情况可直接升级到 Orchestrator
+- 紧急情况使用 `[STATUS:BLOCKED]` 标记
 
 #### 消息确认
 
@@ -337,11 +336,11 @@ send-blocked pm:Claude Developer "技术方案分歧" "讨论了3轮" "需要 PM
 #### ❌ 广播风暴
 ```
 # 错误: 频繁发送 FYI 消息
-broadcast "FYI: 我改了一个小地方"
-broadcast "FYI: 文件更新了"
+pm-broadcast "FYI: 我改了一个小地方"
+pm-broadcast "FYI: 文件更新了"
 
 # 正确: 只广播重要信息
-broadcast "紧急: 即将发布，请停止提交"
+pm-broadcast "紧急: 即将发布，请停止提交"
 ```
 
 ### 2. 工作流反模式

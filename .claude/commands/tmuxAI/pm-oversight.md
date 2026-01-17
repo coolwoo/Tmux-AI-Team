@@ -20,10 +20,7 @@ $ARGUMENTS
 frontend-project
 
 # 带任务描述
-frontend-project 实现用户登录功能
-
-# 多项目监督
-backend-project API 和 frontend UI
+my-project 实现用户登录功能
 ```
 
 **解析规则**:

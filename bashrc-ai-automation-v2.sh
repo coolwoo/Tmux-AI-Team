@@ -1,10 +1,10 @@
 #===============================================================================
-# AI 项目自动化 v2.0 - Tmux + Claude Code 集成
+# AI 项目自动化 v2.6 - Tmux + Claude Code 集成
 #
-# 借鉴 Tmux-Orchestrator 最佳实践:
+# 核心功能:
+# - 项目隔离 PM：一项目一 PM，会话即隔离
 # - 自调度 (Self-scheduling)
 # - 定时 Git 提交
-# - Agent 间通信
 # - PM 槽位管理
 #
 # 安装方法:
@@ -13,65 +13,23 @@
 #   source ~/.bashrc
 #===============================================================================
 
-# === 配置 ===
+#═══════════════════════════════════════════════════════════════════════════════
+# 第一部分: 配置和环境变量
+#═══════════════════════════════════════════════════════════════════════════════
+
 export CODING_BASE="${CODING_BASE:-$HOME/Coding}"
-export CLAUDE_CMD="${CLAUDE_CMD:-claude}"
+export CLAUDE_CMD="${CLAUDE_CMD:-cld}"
 export DEFAULT_DELAY="${DEFAULT_DELAY:-1}"
 export TMUX_AI_TEAM_DIR="${TMUX_AI_TEAM_DIR:-$HOME/Coding/Tmux-AI-Team}"
+export AGENT_LOG_DIR="${AGENT_LOG_DIR:-$HOME/.agent-logs}"
 
-#===============================================================================
-# Claude 快捷命令
-#===============================================================================
+#═══════════════════════════════════════════════════════════════════════════════
+# 第二部分: 内部工具函数 (以 _ 开头，不对外暴露)
+#═══════════════════════════════════════════════════════════════════════════════
 
-# 查找最近的 mcp_servers.json (向上遍历目录)
-__claude_find_mcp() {
-    local dir="$PWD"
-    while [[ "$dir" != "/" ]]; do
-        if [[ -f "$dir/.claude/mcp/mcp_servers.json" ]]; then
-            echo "$dir/.claude/mcp/mcp_servers.json"
-            return 0
-        fi
-        dir="$(dirname "$dir")"
-    done
-    return 1
-}
-
-# clf - Claude Code 全功能模式
-# 自动加载 MCP 配置，启用 IDE 模式
-# 用法: clf [additional_args]
-clf() {
-    local mcp
-    mcp="$(__claude_find_mcp)"
-
-    if [[ -n "$mcp" ]]; then
-        claude \
-            --ide \
-            --dangerously-skip-permissions \
-            --model opus \
-            --mcp-config "$mcp" \
-            "$@"
-    else
-        echo "[clf] warning: mcp_servers.json not found, running without --mcp-config" >&2
-        claude \
-            --ide \
-            --dangerously-skip-permissions \
-            --model opus \
-            "$@"
-    fi
-}
-
-# cld - Claude Code 快速模式
-# 用法: cld [additional_args]
-cld() {
-    claude \
-        --dangerously-skip-permissions \
-        --model opus \
-        "$@"
-}
-
-#===============================================================================
-# 环境自检
-#===============================================================================
+#-------------------------------------------------------------------------------
+# 2.1 包管理和安装建议
+#-------------------------------------------------------------------------------
 
 # 检测包管理器
 _ai_get_pkg_manager() {
@@ -138,6 +96,307 @@ _ai_install_hint() {
             ;;
     esac
 }
+
+#-------------------------------------------------------------------------------
+# 2.2 依赖检查内部函数
+#-------------------------------------------------------------------------------
+
+# 快速检查 (仅 L0 致命级，用于 source 时)
+_ai_quick_check() {
+    local errors=()
+
+    type tmux &>/dev/null || errors+=("tmux")
+    type "$CLAUDE_CMD" &>/dev/null || errors+=("$CLAUDE_CMD")
+    [ -d "$CODING_BASE" ] || errors+=("CODING_BASE 目录")
+
+    if [ ${#errors[@]} -gt 0 ]; then
+        echo "⚠ AI 自动化工具包: 缺少依赖 - ${errors[*]}"
+        echo "  运行 'check-deps' 查看详情"
+        return 1
+    fi
+    return 0
+}
+
+# 依赖守卫 (用于关键函数入口)
+# 用法: _ai_require_deps tmux claude || return 1
+_ai_require_deps() {
+    local missing=()
+
+    for dep in "$@"; do
+        case "$dep" in
+            tmux|git|at|watch)
+                type "$dep" &>/dev/null || missing+=("$dep")
+                ;;
+            claude)
+                type "$CLAUDE_CMD" &>/dev/null || missing+=("claude")
+                ;;
+            coding_base)
+                [ -d "$CODING_BASE" ] || missing+=("CODING_BASE 目录")
+                ;;
+        esac
+    done
+
+    if [ ${#missing[@]} -gt 0 ]; then
+        echo "✗ 缺少依赖: ${missing[*]}"
+        echo "  运行 'check-deps' 查看详情和安装建议"
+        return 1
+    fi
+    return 0
+}
+
+#-------------------------------------------------------------------------------
+# 2.3 路径和项目
+#-------------------------------------------------------------------------------
+
+# 统一路径解析
+# 支持: 绝对路径(/path)、~展开(~/path)、相对路径(./path)、项目名(在CODING_BASE搜索)
+# 用法: _resolve_project_path <input>
+# 输出: 绝对路径 (stdout)
+# 返回: 0=成功, 1=失败
+_resolve_project_path() {
+    local input="$1"
+
+    case "$input" in
+        /*)
+            # 绝对路径
+            if [ -d "$input" ]; then
+                echo "$input"
+                return 0
+            else
+                echo "路径不存在: $input" >&2
+                return 1
+            fi
+            ;;
+        "~"|"~"/*)
+            # ~ 展开
+            local expanded="${input/#\~/$HOME}"
+            if [ -d "$expanded" ]; then
+                echo "$expanded"
+                return 0
+            else
+                echo "路径不存在: $input" >&2
+                return 1
+            fi
+            ;;
+        ./*)
+            # 相对路径
+            local resolved
+            resolved="$(cd "$input" 2>/dev/null && pwd)" || {
+                echo "路径不存在: $input" >&2
+                return 1
+            }
+            echo "$resolved"
+            return 0
+            ;;
+        *)
+            # 项目名：在 CODING_BASE 中模糊搜索
+            local project_name
+            project_name=$(ls -1 "$CODING_BASE" 2>/dev/null | grep -i "$input" | head -1)
+            if [ -n "$project_name" ]; then
+                echo "$CODING_BASE/$project_name"
+                return 0
+            else
+                echo "未找到项目: $input" >&2
+                return 1
+            fi
+            ;;
+    esac
+}
+
+# 检测项目类型
+# 用法: _detect_project_type <项目路径>
+# 策略: 优先配置文件检测，备选源文件检测
+_detect_project_type() {
+    local path="$1"
+
+    # === 阶段1: 配置文件检测 (优先) ===
+
+    # Node.js 生态
+    [ -f "$path/package.json" ] && {
+        grep -q '"next"' "$path/package.json" 2>/dev/null && echo "nextjs" && return
+        grep -q '"vite"' "$path/package.json" 2>/dev/null && echo "vite" && return
+        grep -q '"vue"' "$path/package.json" 2>/dev/null && echo "vue" && return
+        grep -q '"react"' "$path/package.json" 2>/dev/null && echo "react" && return
+        echo "node" && return
+    }
+
+    # Python
+    [ -f "$path/manage.py" ] && echo "django" && return
+    [ -f "$path/requirements.txt" ] || [ -f "$path/pyproject.toml" ] || [ -f "$path/setup.py" ] && echo "python" && return
+
+    # Java - Spring Boot 优先检测
+    [ -f "$path/pom.xml" ] && {
+        grep -q 'spring-boot' "$path/pom.xml" 2>/dev/null && echo "spring-boot" && return
+        echo "java-maven" && return
+    }
+    [ -f "$path/build.gradle" ] && {
+        grep -q 'spring-boot' "$path/build.gradle" 2>/dev/null && echo "spring-boot" && return
+        echo "java-gradle" && return
+    }
+    [ -f "$path/build.gradle.kts" ] && {
+        grep -q 'spring-boot' "$path/build.gradle.kts" 2>/dev/null && echo "spring-boot" && return
+        echo "kotlin" && return
+    }
+
+    # 其他语言 - 配置文件
+    [ -f "$path/go.mod" ] && echo "go" && return
+    [ -f "$path/Cargo.toml" ] && echo "rust" && return
+    [ -f "$path/Gemfile" ] && echo "ruby" && return
+    [ -f "$path/composer.json" ] && echo "php" && return
+    [ -f "$path/pubspec.yaml" ] && echo "flutter" && return
+    [ -f "$path/Package.swift" ] && echo "swift" && return
+    [ -f "$path/mix.exs" ] && echo "elixir" && return
+    [ -f "$path/build.sbt" ] && echo "scala" && return
+
+    # .NET
+    ls "$path"/*.csproj &>/dev/null && echo "dotnet" && return
+    ls "$path"/*.sln &>/dev/null && echo "dotnet" && return
+
+    # === 阶段2: 源文件检测 (备选) ===
+
+    # 检测主要源文件类型
+    ls "$path"/*.py &>/dev/null && echo "python" && return
+    ls "$path"/*.go &>/dev/null && echo "go" && return
+    ls "$path"/*.rs &>/dev/null && echo "rust" && return
+    ls "$path"/*.rb &>/dev/null && echo "ruby" && return
+    ls "$path"/*.php &>/dev/null && echo "php" && return
+    ls "$path"/*.swift &>/dev/null && echo "swift" && return
+    ls "$path"/*.ex "$path"/*.exs &>/dev/null && echo "elixir" && return
+    ls "$path"/*.scala &>/dev/null && echo "scala" && return
+    ls "$path"/*.sh &>/dev/null && echo "bash" && return
+
+    echo "unknown"
+}
+
+# 等待 Claude 启动就绪
+# 用法: _wait_for_claude <target> [max_wait]
+_wait_for_claude() {
+    local target="$1"
+    local max_wait="${2:-30}"
+    local count=0
+
+    while [ $count -lt $max_wait ]; do
+        if tmux capture-pane -t "$target" -p 2>/dev/null | grep -qE "(Claude|❯|Try|你好)"; then
+            echo "✓ Claude 已就绪 (${count}s)"
+            return 0
+        fi
+        sleep 1
+        ((count++))
+        [ $((count % 10)) -eq 0 ] && echo "  等待中... (${count}s)"
+    done
+
+    echo "⚠ Claude 启动超时 (${max_wait}s)，继续执行..."
+    return 1
+}
+
+#-------------------------------------------------------------------------------
+# 2.4 Claude 命令辅助
+#-------------------------------------------------------------------------------
+
+# 查找最近的 mcp_servers.json (向上遍历目录)
+__claude_find_mcp() {
+    local dir="$PWD"
+    while [[ "$dir" != "/" ]]; do
+        if [[ -f "$dir/.claude/mcp/mcp_servers.json" ]]; then
+            echo "$dir/.claude/mcp/mcp_servers.json"
+            return 0
+        fi
+        dir="$(dirname "$dir")"
+    done
+    return 1
+}
+
+# _get_claude_cmd - 智能选择 Claude 启动命令
+# 检测项目是否有 MCP 配置，有则返回 clf，否则返回 cld
+# 用法: cmd=$(_get_claude_cmd "/path/to/project")
+_get_claude_cmd() {
+    local project_path="${1:-$(pwd)}"
+    local mcp_config="$project_path/.claude/mcp/mcp_servers.json"
+
+    if [ -f "$mcp_config" ]; then
+        echo "clf"
+    else
+        echo "cld"
+    fi
+}
+
+#-------------------------------------------------------------------------------
+# 2.5 PM 槽位内部函数
+#-------------------------------------------------------------------------------
+
+# 内部日志函数
+# 用法: _pm_log <action> <slot> <message> [duration]
+_pm_log() {
+    local action="$1"
+    local slot="$2"
+    local message="$3"
+    local duration="${4:-}"
+
+    local session=$(tmux display-message -p '#{session_name}' 2>/dev/null)
+    local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+    local log_file="$AGENT_LOG_DIR/pm_${session}_$(date +%Y%m%d).log"
+
+    mkdir -p "$AGENT_LOG_DIR"
+
+    if [[ -n "$duration" ]]; then
+        echo "[$timestamp] [$action] [$slot] $message (耗时: ${duration})" >> "$log_file"
+    else
+        echo "[$timestamp] [$action] [$slot] $message" >> "$log_file"
+    fi
+}
+
+# 获取槽位列表（从环境变量读取）
+# 返回: 逗号分隔的槽位列表，空表示无槽位
+_pm_get_slots() {
+    local session=$(tmux display-message -p '#{session_name}' 2>/dev/null)
+    local slots=$(tmux show-environment -t "$session" "PM_SLOTS" 2>/dev/null | cut -d= -f2)
+    echo "$slots"
+}
+
+# 设置槽位列表
+_pm_set_slots() {
+    local session="$1"
+    local slots="$2"
+    tmux set-environment -t "$session" "PM_SLOTS" "$slots"
+}
+
+# 检测槽位窗口是否有活动（用于检测过时的 working 状态）
+# 返回: 0=活跃, 1=空闲/无活动
+_is_slot_active() {
+    local session="$1"
+    local slot="$2"
+
+    # 获取窗口最后 5 行内容（去掉空行）
+    local last_lines=$(tmux capture-pane -t "$session:$slot" -p 2>/dev/null | grep -v "^[[:space:]]*$" | tail -5)
+
+    # 如果内容为空，认为是空闲的
+    [[ -z "$last_lines" ]] && return 1
+
+    local last_line=$(echo "$last_lines" | tail -1)
+
+    # 空闲状态特征检测：
+
+    # 1. Claude Code 版本信息 "current: x.x.x · latest: x.x.x"
+    if echo "$last_line" | grep -qE "current:.*latest:"; then
+        return 1
+    fi
+
+    # 2. Claude Code tokens 信息
+    if echo "$last_line" | grep -qE "^[[:space:]]*[0-9]+ tokens[[:space:]]*$"; then
+        return 1
+    fi
+
+    # 3. Shell 提示符（以 $ 或 # 或 % 结尾，常见的 bash/zsh 提示符）
+    if echo "$last_line" | grep -qE '[\$#%>][[:space:]]*$'; then
+        return 1
+    fi
+
+    return 0
+}
+
+#═══════════════════════════════════════════════════════════════════════════════
+# 第三部分: 环境检查 (用户可调用)
+#═══════════════════════════════════════════════════════════════════════════════
 
 # 详细依赖检查 (用户手动调用)
 # 返回值: 0=全部通过, 1=有致命问题, 2=有警告
@@ -244,218 +503,99 @@ check-deps() {
     fi
 }
 
-# 快速检查 (仅 L0 致命级，用于 source 时)
-_ai_quick_check() {
-    local errors=()
+#═══════════════════════════════════════════════════════════════════════════════
+# 第四部分: Claude 快捷命令
+#═══════════════════════════════════════════════════════════════════════════════
 
-    type tmux &>/dev/null || errors+=("tmux")
-    type "$CLAUDE_CMD" &>/dev/null || errors+=("$CLAUDE_CMD")
-    [ -d "$CODING_BASE" ] || errors+=("CODING_BASE 目录")
-
-    if [ ${#errors[@]} -gt 0 ]; then
-        echo "⚠ AI 自动化工具包: 缺少依赖 - ${errors[*]}"
-        echo "  运行 'check-deps' 查看详情"
-        return 1
-    fi
-    return 0
+# cld - Claude Code 快速模式
+# 用法: cld [additional_args]
+cld() {
+    claude \
+        --dangerously-skip-permissions \
+        --model opus \
+        "$@"
 }
 
-# 依赖守卫 (用于关键函数入口)
-# 用法: _ai_require_deps tmux claude || return 1
-_ai_require_deps() {
-    local missing=()
+# clf - Claude Code 全功能模式
+# 自动加载 MCP 配置，启用 IDE 模式
+# 用法: clf [additional_args]
+clf() {
+    local mcp
+    mcp="$(__claude_find_mcp)"
 
-    for dep in "$@"; do
-        case "$dep" in
-            tmux|git|at|watch)
-                type "$dep" &>/dev/null || missing+=("$dep")
-                ;;
-            claude)
-                type "$CLAUDE_CMD" &>/dev/null || missing+=("claude")
-                ;;
-            coding_base)
-                [ -d "$CODING_BASE" ] || missing+=("CODING_BASE 目录")
-                ;;
+    if [[ -n "$mcp" ]]; then
+        claude \
+            --ide \
+            --dangerously-skip-permissions \
+            --model opus \
+            --mcp-config "$mcp" \
+            "$@"
+    else
+        echo "[clf] warning: mcp_servers.json not found, running without --mcp-config" >&2
+        claude \
+            --ide \
+            --dangerously-skip-permissions \
+            --model opus \
+            "$@"
+    fi
+}
+
+#═══════════════════════════════════════════════════════════════════════════════
+# 第五部分: 核心函数
+#═══════════════════════════════════════════════════════════════════════════════
+
+# 发送消息到 Claude Code (处理软回车问题)
+# 用法: tsc [-q] [-r] <target> <message>
+# 选项: -q 静默模式（不输出确认信息）
+#       -r 原始模式（不加发送方前缀）
+tsc() {
+    local quiet=false
+    local raw=false
+
+    while [[ "$1" == -* ]]; do
+        case "$1" in
+            -q) quiet=true; shift ;;
+            -r|--raw) raw=true; shift ;;
+            *) break ;;
         esac
     done
 
-    if [ ${#missing[@]} -gt 0 ]; then
-        echo "✗ 缺少依赖: ${missing[*]}"
-        echo "  运行 'check-deps' 查看详情和安装建议"
-        return 1
-    fi
-    return 0
-}
-
-# 统一路径解析
-# 支持: 绝对路径(/path)、~展开(~/path)、相对路径(./path)、项目名(在CODING_BASE搜索)
-# 用法: _resolve_project_path <input>
-# 输出: 绝对路径 (stdout)
-# 返回: 0=成功, 1=失败
-_resolve_project_path() {
-    local input="$1"
-
-    case "$input" in
-        /*)
-            # 绝对路径
-            if [ -d "$input" ]; then
-                echo "$input"
-                return 0
-            else
-                echo "路径不存在: $input" >&2
-                return 1
-            fi
-            ;;
-        "~"|"~"/*)
-            # ~ 展开
-            local expanded="${input/#\~/$HOME}"
-            if [ -d "$expanded" ]; then
-                echo "$expanded"
-                return 0
-            else
-                echo "路径不存在: $input" >&2
-                return 1
-            fi
-            ;;
-        ./*)
-            # 相对路径
-            local resolved
-            resolved="$(cd "$input" 2>/dev/null && pwd)" || {
-                echo "路径不存在: $input" >&2
-                return 1
-            }
-            echo "$resolved"
-            return 0
-            ;;
-        *)
-            # 项目名：在 CODING_BASE 中模糊搜索
-            local project_name
-            project_name=$(ls -1 "$CODING_BASE" 2>/dev/null | grep -i "$input" | head -1)
-            if [ -n "$project_name" ]; then
-                echo "$CODING_BASE/$project_name"
-                return 0
-            else
-                echo "未找到项目: $input" >&2
-                return 1
-            fi
-            ;;
-    esac
-}
-
-#===============================================================================
-# 项目辅助函数
-#===============================================================================
-
-# 检测项目类型
-# 用法: _detect_project_type <项目路径>
-# 策略: 优先配置文件检测，备选源文件检测
-_detect_project_type() {
-    local path="$1"
-
-    # === 阶段1: 配置文件检测 (优先) ===
-
-    # Node.js 生态
-    [ -f "$path/package.json" ] && {
-        grep -q '"next"' "$path/package.json" 2>/dev/null && echo "nextjs" && return
-        grep -q '"vite"' "$path/package.json" 2>/dev/null && echo "vite" && return
-        grep -q '"vue"' "$path/package.json" 2>/dev/null && echo "vue" && return
-        grep -q '"react"' "$path/package.json" 2>/dev/null && echo "react" && return
-        echo "node" && return
-    }
-
-    # Python
-    [ -f "$path/manage.py" ] && echo "django" && return
-    [ -f "$path/requirements.txt" ] || [ -f "$path/pyproject.toml" ] || [ -f "$path/setup.py" ] && echo "python" && return
-
-    # Java - Spring Boot 优先检测
-    [ -f "$path/pom.xml" ] && {
-        grep -q 'spring-boot' "$path/pom.xml" 2>/dev/null && echo "spring-boot" && return
-        echo "java-maven" && return
-    }
-    [ -f "$path/build.gradle" ] && {
-        grep -q 'spring-boot' "$path/build.gradle" 2>/dev/null && echo "spring-boot" && return
-        echo "java-gradle" && return
-    }
-    [ -f "$path/build.gradle.kts" ] && {
-        grep -q 'spring-boot' "$path/build.gradle.kts" 2>/dev/null && echo "spring-boot" && return
-        echo "kotlin" && return
-    }
-
-    # 其他语言 - 配置文件
-    [ -f "$path/go.mod" ] && echo "go" && return
-    [ -f "$path/Cargo.toml" ] && echo "rust" && return
-    [ -f "$path/Gemfile" ] && echo "ruby" && return
-    [ -f "$path/composer.json" ] && echo "php" && return
-    [ -f "$path/pubspec.yaml" ] && echo "flutter" && return
-    [ -f "$path/Package.swift" ] && echo "swift" && return
-    [ -f "$path/mix.exs" ] && echo "elixir" && return
-    [ -f "$path/build.sbt" ] && echo "scala" && return
-
-    # .NET
-    ls "$path"/*.csproj &>/dev/null && echo "dotnet" && return
-    ls "$path"/*.sln &>/dev/null && echo "dotnet" && return
-
-    # === 阶段2: 源文件检测 (备选) ===
-
-    # 检测主要源文件类型
-    ls "$path"/*.py &>/dev/null && echo "python" && return
-    ls "$path"/*.go &>/dev/null && echo "go" && return
-    ls "$path"/*.rs &>/dev/null && echo "rust" && return
-    ls "$path"/*.rb &>/dev/null && echo "ruby" && return
-    ls "$path"/*.php &>/dev/null && echo "php" && return
-    ls "$path"/*.swift &>/dev/null && echo "swift" && return
-    ls "$path"/*.ex "$path"/*.exs &>/dev/null && echo "elixir" && return
-    ls "$path"/*.scala &>/dev/null && echo "scala" && return
-    ls "$path"/*.sh &>/dev/null && echo "bash" && return
-
-    echo "unknown"
-}
-
-# 等待 Claude 启动就绪
-# 用法: _wait_for_claude <target> [max_wait]
-_wait_for_claude() {
-    local target="$1"
-    local max_wait="${2:-30}"
-    local count=0
-
-    while [ $count -lt $max_wait ]; do
-        if tmux capture-pane -t "$target" -p 2>/dev/null | grep -qE "(Claude|❯|Try|你好)"; then
-            echo "✓ Claude 已就绪 (${count}s)"
-            return 0
-        fi
-        sleep 1
-        ((count++))
-        [ $((count % 10)) -eq 0 ] && echo "  等待中... (${count}s)"
-    done
-
-    echo "⚠ Claude 启动超时 (${max_wait}s)，继续执行..."
-    return 1
-}
-
-#===============================================================================
-# 核心函数
-#===============================================================================
-
-# 发送消息到 Claude Code (处理软回车问题)
-# 用法: tsc [-q] <target> <message>
-# 选项: -q 静默模式（不输出确认信息）
-tsc() {
-    local quiet=false
-    [ "$1" = "-q" ] && { quiet=true; shift; }
-
     if [ $# -lt 2 ]; then
-        echo "用法: tsc [-q] <target> <message>"
+        echo "用法: tsc [-q] [-r] <target> <message>"
         echo "示例: tsc my-project:Claude 'hello'"
-        echo "选项: -q 静默模式"
+        echo "选项: -q 静默模式  -r 原始模式(不加前缀)"
         return 1
     fi
+
     local target="$1"
     shift
-    tmux send-keys -t "$target" "$*" C-m
+
+    local message="$*"
+    if [[ "$raw" != true ]]; then
+        local from=$(tmux display-message -p '#{window_name}' 2>/dev/null)
+        [[ -n "$from" ]] && message="[$from] $*"
+    fi
+
+    tmux send-keys -t "$target" "$message" C-m
     sleep "${TSC_DELAY:-$DEFAULT_DELAY}"
     tmux send-keys -t "$target" Enter
 
     $quiet || echo "✓ 消息已发送到 $target"
+}
+
+# 从窗口名推断角色
+# 用法: get-role [window_name]
+get-role() {
+    local window="${1:-$(tmux display-message -p '#{window_name}' 2>/dev/null)}"
+    case "$window" in
+        dev-*|dev)           echo "Developer" ;;
+        qa-*|qa)             echo "QA" ;;
+        devops-*|devops)     echo "DevOps" ;;
+        reviewer-*|reviewer) echo "Reviewer" ;;
+        PM|Claude)           echo "PM" ;;
+        Shell|Server)        echo "Shell" ;;
+        *)                   echo "Unknown" ;;
+    esac
 }
 
 # 快速启动项目
@@ -558,8 +698,11 @@ fire() {
         echo "⚠ 斜杠命令目录不存在: $src_cmd_dir"
     fi
 
-    # 启动 Claude
-    tmux send-keys -t "$session:Claude" "$CLAUDE_CMD" Enter
+    # 启动 Claude（智能选择模式）
+    local claude_cmd
+    claude_cmd=$(_get_claude_cmd "$project_path")
+    echo "启动模式: $claude_cmd"
+    tmux send-keys -t "$session:Claude" "$claude_cmd" Enter
     _wait_for_claude "$session:Claude" 30
 
     # --auto 模式：发送简报开始工作
@@ -606,9 +749,9 @@ add-window() {
     pm-add-slot "$name" --shell
 }
 
-#===============================================================================
-# 自调度功能 (借鉴 Tmux-Orchestrator)
-#===============================================================================
+#═══════════════════════════════════════════════════════════════════════════════
+# 第六部分: 自调度
+#═══════════════════════════════════════════════════════════════════════════════
 
 # 调度下次检查
 # 用法: schedule-checkin <分钟> <备注> [目标]
@@ -616,16 +759,16 @@ schedule-checkin() {
     local minutes="$1"
     local note="$2"
     local target="${3:-$(tmux display-message -p '#{session_name}:#{window_name}' 2>/dev/null)}"
-    
+
     [ -z "$minutes" ] || [ -z "$note" ] && {
         echo "用法: schedule-checkin <分钟> <备注> [目标]"
         echo "示例: schedule-checkin 30 '检查 API 实现进度'"
         return 1
     }
-    
+
     # 保存备注
     echo "$note" > "/tmp/next_check_note_${target//[:]/_}.txt"
-    
+
     # 使用 at 命令 (需要安装)
     if command -v at &> /dev/null; then
         # 检查 atd 服务状态
@@ -651,9 +794,9 @@ read-next-note() {
     [ -f "$note_file" ] && cat "$note_file" || echo "无备注"
 }
 
-#===============================================================================
-# Git 自动提交
-#===============================================================================
+#═══════════════════════════════════════════════════════════════════════════════
+# 第七部分: Git 自动提交
+#═══════════════════════════════════════════════════════════════════════════════
 
 # 启动自动提交
 start-auto-commit() {
@@ -668,19 +811,19 @@ start-auto-commit() {
     local interval="${2:-30}"  # 默认 30 分钟
 
     [ -z "$session" ] && { echo "用法: start-auto-commit [会话名] [间隔分钟]"; return 1; }
-    
+
     # 获取项目路径
     local project_path=$(tmux display-message -t "$session:Claude" -p "#{pane_current_path}" 2>/dev/null)
     [ -z "$project_path" ] && { echo "无法获取项目路径"; return 1; }
-    
+
     local pid_file="/tmp/auto_commit_${session}.pid"
-    
+
     # 检查是否已运行
     [ -f "$pid_file" ] && kill -0 "$(cat "$pid_file")" 2>/dev/null && {
         echo "自动提交已在运行 (PID: $(cat "$pid_file"))"
         return 0
     }
-    
+
     # 后台运行
     (
         while true; do
@@ -694,7 +837,7 @@ start-auto-commit() {
         done
     ) &
     echo $! > "$pid_file"
-    
+
     echo "✓ 自动提交已启动 (每 ${interval} 分钟, PID: $!)"
 }
 
@@ -702,7 +845,7 @@ start-auto-commit() {
 stop-auto-commit() {
     local session="${1:-$(tmux display-message -p '#{session_name}' 2>/dev/null)}"
     local pid_file="/tmp/auto_commit_${session}.pid"
-    
+
     [ -f "$pid_file" ] && {
         kill "$(cat "$pid_file")" 2>/dev/null
         rm -f "$pid_file"
@@ -710,15 +853,15 @@ stop-auto-commit() {
     } || echo "自动提交未运行"
 }
 
-#===============================================================================
-# 状态监控
-#===============================================================================
+#═══════════════════════════════════════════════════════════════════════════════
+# 第八部分: 状态监控
+#═══════════════════════════════════════════════════════════════════════════════
 
 # 检查 Agent 状态
 check-agent() {
     local session="${1:-$(tmux display-message -p '#{session_name}' 2>/dev/null)}"
     [ -z "$session" ] && { echo "无法确定会话"; return 1; }
-    
+
     echo "=== Claude Agent ($session) ==="
     tmux capture-pane -t "$session:Claude" -p 2>/dev/null | tail -20
     echo ""
@@ -727,10 +870,10 @@ check-agent() {
     echo ""
     echo "=== 错误 ==="
     tmux capture-pane -t "$session:Server" -p 2>/dev/null | grep -iE "(error|failed)" | tail -5 || echo "无"
-    
+
     # 自动提交状态
     [ -f "/tmp/auto_commit_${session}.pid" ] && echo -e "\n=== 自动提交: 运行中 ==="
-    
+
     # 下次检查备注
     local note=$(read-next-note "$session:Claude" 2>/dev/null)
     [ -n "$note" ] && [ "$note" != "无备注" ] && echo -e "\n=== 下次检查备注 ===\n$note"
@@ -871,42 +1014,9 @@ find-window() {
     [ -z "$results" ] && echo "  未找到匹配的窗口"
 }
 
-#===============================================================================
-# Agent 间通信 (多 Agent 场景)
-#===============================================================================
-
-# 向指定 Agent 发送消息 (tsc 的别名，保持向后兼容)
-alias send-to-agent='tsc'
-
-# 列出所有 Agent 会话
-list-agents() {
-    echo "活跃的 Agent 会话:"
-    tmux list-sessions 2>/dev/null | while read -r line; do
-        session=$(echo "$line" | cut -d: -f1)
-        windows=$(tmux list-windows -t "$session" 2>/dev/null | grep -c "")
-        echo "  $session ($windows 窗口)"
-    done
-}
-
-# 广播消息到所有 Agent
-broadcast() {
-    local message="$*"
-    [ -z "$message" ] && { echo "用法: broadcast <消息>"; return 1; }
-
-    tmux list-sessions -F "#{session_name}" 2>/dev/null | while read -r session; do
-        # 跳过非项目会话
-        tmux has-session -t "$session:Claude" 2>/dev/null || continue
-        echo "发送到: $session"
-        tsc -q "$session:Claude" "[广播] $message"
-    done
-}
-
-#===============================================================================
-# 通信协议 (标准化消息格式)
-#===============================================================================
-
-# 日志目录
-export AGENT_LOG_DIR="${AGENT_LOG_DIR:-$HOME/.agent-logs}"
+#═══════════════════════════════════════════════════════════════════════════════
+# 第九部分: 通信协议
+#═══════════════════════════════════════════════════════════════════════════════
 
 # 发送状态更新
 # 用法: send-status <target> <agent-name> <completed> <current> [blocked]
@@ -1054,9 +1164,9 @@ send-blocked() {
     echo "✓ 阻塞通知已发送"
 }
 
-#===============================================================================
-# Agent 日志系统
-#===============================================================================
+#═══════════════════════════════════════════════════════════════════════════════
+# 第十部分: 日志系统
+#═══════════════════════════════════════════════════════════════════════════════
 
 # 初始化日志目录
 init-agent-logs() {
@@ -1163,9 +1273,9 @@ clean-agent-logs() {
     echo "✓ 已清理 $days 天前的日志"
 }
 
-#===============================================================================
-# 系统健康检查
-#===============================================================================
+#═══════════════════════════════════════════════════════════════════════════════
+# 第十一部分: 系统健康检查
+#═══════════════════════════════════════════════════════════════════════════════
 
 # 检查整个 AI 自动化系统的运行状态
 # 用法: system-health [--save]
@@ -1313,15 +1423,15 @@ watch-health() {
     done
 }
 
-#===============================================================================
-# 停止和清理
-#===============================================================================
+#═══════════════════════════════════════════════════════════════════════════════
+# 第十二部分: 会话管理
+#═══════════════════════════════════════════════════════════════════════════════
 
 # 停止项目
 stop-project() {
     local session="${1:-$(tmux display-message -p '#{session_name}' 2>/dev/null)}"
     [ -z "$session" ] && { echo "请提供会话名称"; return 1; }
-    
+
     echo "停止项目: $session"
     stop-auto-commit "$session"
     tmux kill-session -t "$session" 2>/dev/null && echo "✓ 已停止" || echo "会话不存在"
@@ -1330,57 +1440,17 @@ stop-project() {
 # 切换会话
 goto() {
     local session="$1"
-    [ -z "$session" ] && { list-agents; return 1; }
+    [ -z "$session" ] && { tmux list-sessions 2>/dev/null || echo "无活跃会话"; return 1; }
     tmux attach -t "$session" 2>/dev/null || echo "会话 '$session' 不存在"
 }
 
-#===============================================================================
-# 别名
-#===============================================================================
+#═══════════════════════════════════════════════════════════════════════════════
+# 第十三部分: PM 槽位管理 (v3.5)
+#═══════════════════════════════════════════════════════════════════════════════
 
-alias ts='tmux list-sessions'
-alias tw='tmux list-windows'
-alias tp='tmux list-panes'
-
-#===============================================================================
-# PM 多槽位管理 (PM-Oversight v3.4)
-#===============================================================================
-
-# 内部日志函数
-# 用法: _pm_log <action> <slot> <message> [duration]
-_pm_log() {
-    local action="$1"
-    local slot="$2"
-    local message="$3"
-    local duration="${4:-}"
-
-    local session=$(tmux display-message -p '#{session_name}' 2>/dev/null)
-    local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
-    local log_file="$AGENT_LOG_DIR/pm_${session}_$(date +%Y%m%d).log"
-
-    mkdir -p "$AGENT_LOG_DIR"
-
-    if [[ -n "$duration" ]]; then
-        echo "[$timestamp] [$action] [$slot] $message (耗时: ${duration})" >> "$log_file"
-    else
-        echo "[$timestamp] [$action] [$slot] $message" >> "$log_file"
-    fi
-}
-
-# 获取槽位列表（从环境变量读取）
-# 返回: 逗号分隔的槽位列表，空表示无槽位
-_pm_get_slots() {
-    local session=$(tmux display-message -p '#{session_name}' 2>/dev/null)
-    local slots=$(tmux show-environment -t "$session" "PM_SLOTS" 2>/dev/null | cut -d= -f2)
-    echo "$slots"
-}
-
-# 设置槽位列表
-_pm_set_slots() {
-    local session="$1"
-    local slots="$2"
-    tmux set-environment -t "$session" "PM_SLOTS" "$slots"
-}
+#-------------------------------------------------------------------------------
+# 14.1 槽位生命周期
+#-------------------------------------------------------------------------------
 
 # 初始化 Agent 工作槽位
 # 用法: pm-init-slots
@@ -1398,7 +1468,25 @@ pm-init-slots() {
     # 检查槽位是否已存在
     local current_slots=$(_pm_get_slots)
     if echo ",$current_slots," | grep -q ",$default_slot,"; then
-        echo "⚠ 槽位已存在: $default_slot"
+        # 槽位在 PM_SLOTS 中存在，但需要验证窗口是否真的存在
+        if tmux list-windows -t "$session" -F '#{window_name}' 2>/dev/null | grep -q "^${default_slot}$"; then
+            echo "⚠ 槽位已存在: $default_slot"
+        else
+            # 窗口不存在，清理过时槽位并重新创建
+            echo "⚠ 检测到过时槽位 $default_slot（窗口不存在），重新创建..."
+            # 从 PM_SLOTS 中移除
+            local new_slots=$(echo "$current_slots" | sed "s/,$default_slot,/,/g; s/^$default_slot,//; s/,$default_slot$//; s/^$default_slot$//")
+            _pm_set_slots "$session" "$new_slots"
+            # 清理环境变量
+            local var_prefix="${default_slot^^}"
+            var_prefix="${var_prefix//-/_}"
+            tmux set-environment -t "$session" -u "${var_prefix}_STATUS" 2>/dev/null
+            tmux set-environment -t "$session" -u "${var_prefix}_TYPE" 2>/dev/null
+            tmux set-environment -t "$session" -u "${var_prefix}_TASK" 2>/dev/null
+            tmux set-environment -t "$session" -u "${var_prefix}_STARTED" 2>/dev/null
+            # 重新创建
+            pm-add-slot "$default_slot" --claude
+        fi
     else
         # 使用 pm-add-slot 创建 Claude 槽位
         pm-add-slot "$default_slot" --claude
@@ -1480,9 +1568,11 @@ pm-add-slot() {
     tmux set-environment -t "$session" "${var_prefix}_TYPE" "$mode"
 
     if [[ "$mode" == "claude" ]]; then
-        # Claude 模式：启动 Claude
-        echo "启动 Claude..."
-        tmux send-keys -t "$session:$slot" "$CLAUDE_CMD" Enter
+        # Claude 模式：启动 Claude（智能选择模式）
+        local claude_cmd
+        claude_cmd=$(_get_claude_cmd "$(pwd)")
+        echo "启动 Claude ($claude_cmd)..."
+        tmux send-keys -t "$session:$slot" "$claude_cmd" Enter
         _wait_for_claude "$session:$slot" 30
         tmux set-environment -t "$session" "${var_prefix}_STATUS" "ready"
         _pm_log "ADD_SLOT" "$slot" "添加 Claude 槽位"
@@ -1611,42 +1701,12 @@ pm-list-slots() {
     done
 }
 
+#-------------------------------------------------------------------------------
+# 14.2 状态管理
+#-------------------------------------------------------------------------------
+
 # 查看所有槽位状态
 # 用法: pm-status
-# 检测槽位窗口是否有活动（用于检测过时的 working 状态）
-# 返回: 0=活跃, 1=空闲/无活动
-_is_slot_active() {
-    local session="$1"
-    local slot="$2"
-
-    # 获取窗口最后 5 行内容（去掉空行）
-    local last_lines=$(tmux capture-pane -t "$session:$slot" -p 2>/dev/null | grep -v "^[[:space:]]*$" | tail -5)
-
-    # 如果内容为空，认为是空闲的
-    [[ -z "$last_lines" ]] && return 1
-
-    local last_line=$(echo "$last_lines" | tail -1)
-
-    # 空闲状态特征检测：
-
-    # 1. Claude Code 版本信息 "current: x.x.x · latest: x.x.x"
-    if echo "$last_line" | grep -qE "current:.*latest:"; then
-        return 1
-    fi
-
-    # 2. Claude Code tokens 信息
-    if echo "$last_line" | grep -qE "^[[:space:]]*[0-9]+ tokens[[:space:]]*$"; then
-        return 1
-    fi
-
-    # 3. Shell 提示符（以 $ 或 # 或 % 结尾，常见的 bash/zsh 提示符）
-    if echo "$last_line" | grep -qE '[\$#%>][[:space:]]*$'; then
-        return 1
-    fi
-
-    return 0
-}
-
 pm-status() {
     local session=$(tmux display-message -p '#{session_name}' 2>/dev/null)
 
@@ -1662,11 +1722,11 @@ pm-status() {
         return 0
     fi
 
-    echo "╔══════════════════════════════════════════════════════════════════╗"
-    echo "║                 PM 状态面板  $(date +%H:%M:%S)                        ║"
-    echo "╠══════════╦════╦══════════╦═════════════════════════════════════╣"
-    echo "║ 槽位     ║类型║ 状态     ║ 任务                                ║"
-    echo "╠══════════╬════╬══════════╬═════════════════════════════════════╣"
+    echo "╔═══════════════════════════════════════════════════════════════════════════╗"
+    echo "║                      PM 状态面板  $(date +%H:%M:%S)                          ║"
+    echo "╠══════════╦════╦═══════════╦══════════╦══════════════════════════════╣"
+    echo "║ 槽位     ║类型║ 角色      ║ 状态     ║ 任务                         ║"
+    echo "╠══════════╬════╬═══════════╬══════════╬══════════════════════════════╣"
 
     # 使用 for 循环遍历动态槽位列表
     local IFS=','
@@ -1705,11 +1765,12 @@ pm-status() {
             blocked) icon="🟡" ;;
         esac
 
-        printf "║ %-8s ║ %s ║ %s %-6s ║ %-35s ║\n" "$slot" "$type_icon" "$icon" "${status}${stale_marker}" "${task:0:35}"
+        local role=$(get-role "$slot")
+        printf "║ %-8s ║ %s ║ %-9s ║ %s %-6s ║ %-28s ║\n" "$slot" "$type_icon" "$role" "$icon" "${status}${stale_marker}" "${task:0:28}"
     done
     unset IFS
 
-    echo "╚══════════╩════╩══════════╩═════════════════════════════════════╝"
+    echo "╚══════════╩════╩═══════════╩══════════╩══════════════════════════════╝"
 
     # 如果有过时状态，显示提示
     local has_stale=false
@@ -1730,79 +1791,6 @@ pm-status() {
         echo ""
         echo "提示: 标记 '?' 表示状态可能过时，使用 pm-mark <slot> idle 重置"
     fi
-}
-
-# 分配任务到槽位
-# 用法: pm-assign <slot> <role> <task>
-pm-assign() {
-    local slot="$1"
-    local role="$2"
-    local task="$3"
-    local session=$(tmux display-message -p '#{session_name}' 2>/dev/null)
-
-    [ -z "$slot" ] || [ -z "$role" ] || [ -z "$task" ] && {
-        echo "用法: pm-assign <slot> <role> <task>"
-        echo "示例: pm-assign dev-1 role-developer \"实现用户登录 API\""
-        echo ""
-        echo "槽位: dev-1 | dev-2 | qa"
-        echo "角色: role-developer | role-qa | role-reviewer | role-devops"
-        return 1
-    }
-
-    local var_prefix="${slot^^}"
-    var_prefix="${var_prefix//-/_}"
-
-    # 检查槽位存在
-    tmux list-windows -t "$session" -F '#{window_name}' | grep -q "^${slot}$" || {
-        echo "错误: 槽位 $slot 不存在，先运行 pm-init-slots"
-        return 1
-    }
-
-    # 检查槽位类型
-    local slot_type=$(tmux show-environment -t "$session" "${var_prefix}_TYPE" 2>/dev/null | cut -d= -f2)
-    slot_type="${slot_type:-claude}"  # 向后兼容：无类型默认为 claude
-
-    if [[ "$slot_type" == "shell" ]]; then
-        echo "错误: $slot 是 Shell 槽位，无法分配 Claude 任务"
-        echo "提示: 使用 pm-add-slot $slot --claude 创建 Claude 槽位"
-        return 1
-    fi
-
-    # 检查槽位状态
-    local status=$(tmux show-environment -t "$session" "${var_prefix}_STATUS" 2>/dev/null | cut -d= -f2)
-    if [[ "$status" == "working" ]]; then
-        echo "警告: 槽位 $slot 正在工作中，无法分配新任务"
-        echo "如需覆盖，请先执行: pm-mark $slot idle"
-        return 1
-    fi
-
-    # 根据状态决定是否启动 Claude
-    if [[ "$status" == "ready" ]]; then
-        # ready 状态: Claude 已在运行，直接发送任务
-        echo "槽位 $slot 已就绪，直接分配任务..."
-    else
-        # idle 或其他状态: 需要启动 Claude（向后兼容旧槽位）
-        echo "启动 Claude 到 $slot..."
-        tmux send-keys -t "$session:$slot" "$CLAUDE_CMD" Enter
-        _wait_for_claude "$session:$slot" 30
-    fi
-
-    # 加载角色
-    echo "加载角色 $role..."
-    tsc -q "$session:$slot" "/$role"
-
-    # 发送任务
-    echo "发送任务..."
-    tsc -q "$session:$slot" "你的任务: $task"
-
-    # 更新状态
-    tmux set-environment -t "$session" "${var_prefix}_STATUS" "working"
-    tmux set-environment -t "$session" "${var_prefix}_TASK" "$task"
-    tmux set-environment -t "$session" "${var_prefix}_STARTED" "$(date +%s)"
-
-    _pm_log "ASSIGN" "$slot" "$task (角色: $role)"
-    echo ""
-    echo "✓ 已分配: $slot ← $task"
 }
 
 # 标记槽位状态
@@ -1924,6 +1912,85 @@ pm-check() {
     fi
 }
 
+#-------------------------------------------------------------------------------
+# 14.3 任务分配和通信
+#-------------------------------------------------------------------------------
+
+# 分配任务到槽位
+# 用法: pm-assign <slot> <role> <task>
+pm-assign() {
+    local slot="$1"
+    local role="$2"
+    local task="$3"
+    local session=$(tmux display-message -p '#{session_name}' 2>/dev/null)
+
+    [ -z "$slot" ] || [ -z "$role" ] || [ -z "$task" ] && {
+        echo "用法: pm-assign <slot> <role> <task>"
+        echo "示例: pm-assign dev-1 role-developer \"实现用户登录 API\""
+        echo ""
+        echo "槽位: dev-1 | dev-2 | qa"
+        echo "角色: role-developer | role-qa | role-reviewer | role-devops"
+        return 1
+    }
+
+    local var_prefix="${slot^^}"
+    var_prefix="${var_prefix//-/_}"
+
+    # 检查槽位存在
+    tmux list-windows -t "$session" -F '#{window_name}' | grep -q "^${slot}$" || {
+        echo "错误: 槽位 $slot 不存在，先运行 pm-init-slots"
+        return 1
+    }
+
+    # 检查槽位类型
+    local slot_type=$(tmux show-environment -t "$session" "${var_prefix}_TYPE" 2>/dev/null | cut -d= -f2)
+    slot_type="${slot_type:-claude}"  # 向后兼容：无类型默认为 claude
+
+    if [[ "$slot_type" == "shell" ]]; then
+        echo "错误: $slot 是 Shell 槽位，无法分配 Claude 任务"
+        echo "提示: 使用 pm-add-slot $slot --claude 创建 Claude 槽位"
+        return 1
+    fi
+
+    # 检查槽位状态
+    local status=$(tmux show-environment -t "$session" "${var_prefix}_STATUS" 2>/dev/null | cut -d= -f2)
+    if [[ "$status" == "working" ]]; then
+        echo "警告: 槽位 $slot 正在工作中，无法分配新任务"
+        echo "如需覆盖，请先执行: pm-mark $slot idle"
+        return 1
+    fi
+
+    # 根据状态决定是否启动 Claude
+    if [[ "$status" == "ready" ]]; then
+        # ready 状态: Claude 已在运行，直接发送任务
+        echo "槽位 $slot 已就绪，直接分配任务..."
+    else
+        # idle 或其他状态: 需要启动 Claude（智能选择模式）
+        local claude_cmd
+        claude_cmd=$(_get_claude_cmd "$(pwd)")
+        echo "启动 Claude 到 $slot ($claude_cmd)..."
+        tmux send-keys -t "$session:$slot" "$claude_cmd" Enter
+        _wait_for_claude "$session:$slot" 30
+    fi
+
+    # 加载角色
+    echo "加载角色 $role..."
+    tsc -q "$session:$slot" "/$role"
+
+    # 发送任务
+    echo "发送任务..."
+    tsc -q "$session:$slot" "你的任务: $task"
+
+    # 更新状态
+    tmux set-environment -t "$session" "${var_prefix}_STATUS" "working"
+    tmux set-environment -t "$session" "${var_prefix}_TASK" "$task"
+    tmux set-environment -t "$session" "${var_prefix}_STARTED" "$(date +%s)"
+
+    _pm_log "ASSIGN" "$slot" "$task (角色: $role)"
+    echo ""
+    echo "✓ 已分配: $slot ← $task"
+}
+
 # 广播消息到所有工作中的槽位
 # 用法: pm-broadcast <message>
 pm-broadcast() {
@@ -1954,7 +2021,7 @@ pm-broadcast() {
         local status=$(tmux show-environment -t "$session" "${var_prefix}_STATUS" 2>/dev/null | cut -d= -f2)
 
         if [[ "$status" == "working" ]]; then
-            tsc -q "$session:$slot" "[PM 广播] $message"
+            tsc -q -r "$session:$slot" "[PM 广播] $message"
             echo "→ $slot: 已发送"
             sent_count=$((sent_count + 1))
         fi
@@ -1969,6 +2036,10 @@ pm-broadcast() {
         echo "✓ 广播完成: $sent_count 个槽位"
     fi
 }
+
+#-------------------------------------------------------------------------------
+# 14.4 输出和等待
+#-------------------------------------------------------------------------------
 
 # 获取槽位窗口输出
 # 用法: pm-get-output <slot> [lines]
@@ -2065,6 +2136,10 @@ pm-send-and-wait() {
     pm-wait-result "$slot" "$timeout" 5
 }
 
+#-------------------------------------------------------------------------------
+# 14.5 历史记录
+#-------------------------------------------------------------------------------
+
 # 查看 PM 操作历史
 # 用法: pm-history [n|today|all]
 pm-history() {
@@ -2096,9 +2171,9 @@ pm-history() {
     echo "日志文件: $log_file"
 }
 
-#===============================================================================
-# Claude Code Hook 入口
-#===============================================================================
+#═══════════════════════════════════════════════════════════════════════════════
+# 第十四部分: Hook 入口
+#═══════════════════════════════════════════════════════════════════════════════
 
 # Stop Hook: 检测 Agent 状态变化并通知 PM
 # 由 Claude Code Stop 事件触发，通过 settings.json 配置
@@ -2197,15 +2272,27 @@ _pm_stop_hook() {
     if [[ -n "$pm_window" ]]; then
         local notify="[Hook] $slot → $detected_status"
         [[ -n "$detected_message" ]] && notify="$notify: $detected_message"
-        tsc -q "$session:$pm_window" "$notify"
+        tsc -q -r "$session:$pm_window" "$notify"
     fi
 
     _pm_log "HOOK" "$slot" "$detected_status: $detected_message"
 }
 
-#===============================================================================
-# 使用说明
-#===============================================================================
+#═══════════════════════════════════════════════════════════════════════════════
+# 第十五部分: 别名
+#═══════════════════════════════════════════════════════════════════════════════
+
+# tmux 快捷别名
+alias ts='tmux list-sessions'
+alias tw='tmux list-windows'
+alias tp='tmux list-panes'
+
+# 向指定 Agent 发送消息 (tsc 的别名，保持向后兼容)
+alias send-to-agent='tsc'
+
+#═══════════════════════════════════════════════════════════════════════════════
+# 第十六部分: 使用说明
+#═══════════════════════════════════════════════════════════════════════════════
 #
 # 环境检查:
 #   check-deps                  检查依赖并显示安装建议
@@ -2228,11 +2315,6 @@ _pm_stop_hook() {
 # Git 自动提交:
 #   start-auto-commit [session] [分钟]  启动自动提交
 #   stop-auto-commit [session]          停止自动提交
-#
-# 多 Agent:
-#   list-agents                 列出所有 Agent
-#   send-to-agent <target> msg  向指定 Agent 发送消息
-#   broadcast "消息"            广播到所有 Agent
 #
 # 通信协议:
 #   send-status <target> <name> <done> <current>  发送状态更新
@@ -2264,7 +2346,10 @@ _pm_stop_hook() {
 #   pm-wait-result <slot> [timeout]  等待槽位完成并返回结果
 #   pm-send-and-wait <slot> <msg>    发送消息并等待结果
 #
-#===============================================================================
+#═══════════════════════════════════════════════════════════════════════════════
 
-# source 时运行快速检查
+#═══════════════════════════════════════════════════════════════════════════════
+# 第十七部分: 初始化 (source 时执行)
+#═══════════════════════════════════════════════════════════════════════════════
+
 _ai_quick_check

@@ -108,10 +108,7 @@
 /tmuxAI:pm-oversight frontend-project
 
 # 带任务描述
-/tmuxAI:pm-oversight frontend-project 实现用户登录功能
-
-# 多项目监督
-/tmuxAI:pm-oversight backend API 和 frontend UI
+/tmuxAI:pm-oversight my-project 实现用户登录功能
 ```
 
 **核心职责**:

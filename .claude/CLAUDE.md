@@ -102,4 +102,8 @@ fi
 ## 相关链接
 
 - [tmuxAI 命令详情](commands/tmuxAI/CLAUDE.md)
+- [security 命令详情](commands/security/CLAUDE.md)
+- [zcf 命令详情](commands/zcf/CLAUDE.md)
+- [agents 详情](agents/CLAUDE.md)
 - [Agent 角色指南](../docs/04-agent-roles.md)
+

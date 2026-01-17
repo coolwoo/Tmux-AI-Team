@@ -148,7 +148,6 @@ pm-assign qa role-qa "测试功能完整性"  # 中型/大型
 各角色启动后，建立通信渠道：
 - Developer ↔ PM: 进度汇报、任务分配
 - Developer ↔ QA: Bug 报告、验证请求
-- PM ↔ Orchestrator: 状态汇总、问题升级
 
 ## 角色简报模板
 
