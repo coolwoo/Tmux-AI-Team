@@ -14,6 +14,10 @@ AI 项目自动化工具包 - 将 tmux 与 Claude Code 集成，实现自主开�
 - PM 监督模式：项目内 PM 自动监督 Engineer Agent（一项目一PM）
 - 环境自检：自动检测依赖并提供安装建议
 
+设计文档:
+
+@项目隔离PM.md
+
 ## 项目结构图
 
 ```mermaid
