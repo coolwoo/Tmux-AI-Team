@@ -1,5 +1,5 @@
 ---
-description: 智能检测槽位状态，解析 [STATUS:*] 标记
+description: 智能检测 [STATUS:*] 标记
 allowedTools: ["Bash"]
 ---
 
@@ -53,4 +53,4 @@ pm-check dev-1
 
 - 只扫描最近 30 行输出
 - 优先匹配最新的状态标记
-- 可用 `/tmuxAI:pm-mark` 手动覆盖自动检测结果
+- 可用 `/tmuxAI:pm:mark` 手动覆盖自动检测结果

@@ -2307,6 +2307,86 @@ _pm_stop_hook() {
     _pm_log "HOOK" "$slot" "$detected_status: $detected_message"
 }
 
+# Prompt Hook: 检测人类介入并通知 PM
+# 由 Claude Code UserPromptSubmit 事件触发
+# 用法: bash -c 'source ~/.ai-automation.sh && _pm_prompt_hook'
+#
+# 配置方式 (项目 .claude/settings.json):
+# {
+#   "hooks": {
+#     "UserPromptSubmit": [{
+#       "hooks": [{
+#         "type": "command",
+#         "command": "bash -c 'source ~/.ai-automation.sh && _pm_prompt_hook'",
+#         "timeout": 5000
+#       }]
+#     }]
+#   }
+# }
+#
+# 解决问题：当人类直接介入 Agent 工作时，PM 不知道 Agent 重新开始工作
+# 原理：每次用户提交 prompt 时，检测槽位状态，如果不是 working 则更新并通知 PM
+_pm_prompt_hook() {
+    local debug_log=~/.agent-logs/hook_debug.log
+    mkdir -p ~/.agent-logs 2>/dev/null
+
+    # 读取 stdin（Claude Code 传入的 JSON）
+    local input=$(cat)
+    local prompt=$(echo "$input" | grep -o '"prompt"[[:space:]]*:[[:space:]]*"[^"]*"' | sed 's/"prompt"[[:space:]]*:[[:space:]]*"//' | sed 's/"$//' | head -c 50)
+
+    # 使用 _get_tmux_info 获取正确的窗口名
+    local session=$(_get_tmux_info session)
+    local window=$(_get_tmux_info window)
+
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] [DEBUG] _pm_prompt_hook called, session=$session window=$window prompt=$prompt..." >> "$debug_log"
+
+    # 不在 tmux 中，跳过
+    [[ -z "$session" ]] && return 0
+
+    # 获取已注册槽位列表
+    local slots=$(tmux show-environment -t "$session" PM_SLOTS 2>/dev/null | cut -d= -f2)
+
+    # 检查当前窗口是否是已注册的槽位
+    if [[ -z "$slots" ]] || ! echo ",$slots," | grep -q ",$window,"; then
+        echo "[$(date '+%Y-%m-%d %H:%M:%S')] [DEBUG] EXIT: window $window not a registered slot" >> "$debug_log"
+        return 0
+    fi
+
+    local slot="$window"
+    local var_prefix="${slot^^}"
+    var_prefix="${var_prefix//-/_}"
+
+    # 获取当前状态
+    local current_status=$(tmux show-environment -t "$session" "${var_prefix}_STATUS" 2>/dev/null | cut -d= -f2)
+
+    # 如果已经是 working，不需要重复通知
+    if [[ "$current_status" == "working" ]]; then
+        echo "[$(date '+%Y-%m-%d %H:%M:%S')] [DEBUG] EXIT: already working" >> "$debug_log"
+        return 0
+    fi
+
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] [DEBUG] Detected human intervention, current_status=$current_status → working" >> "$debug_log"
+
+    # 更新状态为 working
+    pm-mark "$slot" working
+
+    # 通知 PM 窗口
+    local pm_window=""
+    if tmux list-windows -t "$session" -F '#{window_name}' | grep -q "^Claude$"; then
+        pm_window="Claude"
+    elif tmux list-windows -t "$session" -F '#{window_name}' | grep -q "^pm$"; then
+        pm_window="pm"
+    fi
+
+    if [[ -n "$pm_window" ]]; then
+        local notify="[Hook] $slot: 人类介入，重新开始工作"
+        [[ -n "$prompt" ]] && notify="$notify (prompt: ${prompt}...)"
+        tsc -q -r "$session:$pm_window" "$notify"
+    fi
+
+    _pm_log "HOOK" "$slot" "human_intervention: prompt=${prompt}..."
+}
+
 #═══════════════════════════════════════════════════════════════════════════════
 # 第十五部分: 别名
 #═══════════════════════════════════════════════════════════════════════════════

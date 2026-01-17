@@ -12,7 +12,7 @@
 
 | 提示词 | 对应命令 | 说明 |
 |--------|----------|------|
-| 初始化槽位 | `/tmuxAI:pm-init` | 创建 dev-1 Claude 槽位 |
+| 初始化槽位 | `/tmuxAI:pm:1-init` | 创建 dev-1 Claude 槽位 |
 | 添加 dev-2 槽位 | `pm-add-slot dev-2 --claude` | Claude 槽位 |
 | 添加 qa 槽位 | `pm-add-slot qa --claude` | Claude 槽位 |
 | 添加 Shell 窗口 | `pm-add-slot server --shell` | 命令执行窗口 |
@@ -27,31 +27,31 @@
 
 | 提示词 | 对应命令 | 说明 |
 |--------|----------|------|
-| 查看状态面板 | `/tmuxAI:pm-status` | 显示所有槽位状态 |
-| 检查 dev-1 状态 | `/tmuxAI:pm-check dev-1` | 智能检测（解析 [STATUS:*]） |
-| 查看操作历史 | `/tmuxAI:pm-history` | PM 操作日志 |
+| 查看状态面板 | `/tmuxAI:pm:3-status` | 显示所有槽位状态 |
+| 检查 dev-1 状态 | `/tmuxAI:pm:check dev-1` | 智能检测（解析 [STATUS:*]） |
+| 查看操作历史 | `/tmuxAI:pm:history` | PM 操作日志 |
 
 ### 分配任务
 
 | 提示词 | 对应命令 |
 |--------|----------|
-| 给 dev-1 分配开发任务 | `/tmuxAI:pm-assign dev-1 role-developer "实现用户登录"` |
-| 让 qa 测试登录功能 | `/tmuxAI:pm-assign qa role-qa "测试登录功能"` |
-| 让 dev-2 做代码审查 | `/tmuxAI:pm-assign dev-2 role-reviewer "审查 PR #123"` |
+| 给 dev-1 分配开发任务 | `/tmuxAI:pm:2-assign dev-1 role-developer "实现用户登录"` |
+| 让 qa 测试登录功能 | `/tmuxAI:pm:2-assign qa role-qa "测试登录功能"` |
+| 让 dev-2 做代码审查 | `/tmuxAI:pm:2-assign dev-2 role-reviewer "审查 PR #123"` |
 
 ### 标记状态
 
 | 提示词 | 对应命令 |
 |--------|----------|
-| 把 dev-1 标记为空闲 | `/tmuxAI:pm-mark dev-1 idle` |
-| 标记 dev-1 已完成 | `/tmuxAI:pm-mark dev-1 done` |
+| 把 dev-1 标记为空闲 | `/tmuxAI:pm:mark dev-1 idle` |
+| 标记 dev-1 已完成 | `/tmuxAI:pm:mark dev-1 done` |
 
 ### 广播消息
 
 | 提示词 | 对应命令 |
 |--------|----------|
-| 通知所有 Agent 汇报进度 | `/tmuxAI:pm-broadcast "请汇报进度"` |
-| 广播暂停工作 | `/tmuxAI:pm-broadcast "暂停当前工作"` |
+| 通知所有 Agent 汇报进度 | `/tmuxAI:pm:broadcast "请汇报进度"` |
+| 广播暂停工作 | `/tmuxAI:pm:broadcast "暂停当前工作"` |
 
 ---
 
@@ -88,7 +88,7 @@
 
 ## 状态标记协议
 
-Agent 完成任务时应输出状态标记，PM 使用 `/tmuxAI:pm-check` 自动检测：
+Agent 完成任务时应输出状态标记，PM 使用 `/tmuxAI:pm:check` 自动检测：
 
 | 状态 | 标记格式 |
 |------|----------|
@@ -104,13 +104,13 @@ Agent 完成任务时应输出状态标记，PM 使用 `/tmuxAI:pm-check` 自动
 ### 多 Agent 协作
 
 ```
-1. 初始化槽位                           # /tmuxAI:pm-init
+1. 初始化槽位                           # /tmuxAI:pm:1-init
 2. 添加 dev-2 槽位                      # pm-add-slot dev-2 --claude
 3. 添加 qa 槽位                         # pm-add-slot qa --claude
 4. 给 dev-1 分配任务：实现后端 API
 5. 给 dev-2 分配任务：实现前端界面
 6. 15 分钟后提醒检查进度
-7. 查看状态面板                         # /tmuxAI:pm-status
+7. 查看状态面板                         # /tmuxAI:pm:3-status
 8. 收到 [STATUS:DONE] → 验收
 9. 让 qa 测试功能
 10. 删除 qa 槽位（完成后）
@@ -120,9 +120,9 @@ Agent 完成任务时应输出状态标记，PM 使用 `/tmuxAI:pm-check` 自动
 
 ```
 1. 查看状态面板                         # 检查是否有 working? 过时状态
-2. 检查 dev-1 状态                      # /tmuxAI:pm-check dev-1
+2. 检查 dev-1 状态                      # /tmuxAI:pm:check dev-1
 3. 看看 dev-1 在做什么                  # pm-get-output dev-1 50
-4. 把 dev-1 标记为空闲（如需重置）      # /tmuxAI:pm-mark dev-1 idle
+4. 把 dev-1 标记为空闲（如需重置）      # /tmuxAI:pm:mark dev-1 idle
 ```
 
 ---

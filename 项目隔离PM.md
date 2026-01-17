@@ -44,13 +44,14 @@
 │                                                                          │
 │  ┌────────────────────────────────────────────────────────────────────┐ │
 │  │                        应用层 (斜杠命令)                            │ │
-│  │  /tmuxAI:pm-oversight  /tmuxAI:role-developer  /tmuxAI:pm-assign   │ │
+│  │  /tmuxAI:start:pm-oversight  /tmuxAI:roles:developer  /tmuxAI:pm:2-assign   │ │
 │  └────────────────────────────────────────────────────────────────────┘ │
 │                                    │                                     │
 │                                    ▼                                     │
 │  ┌────────────────────────────────────────────────────────────────────┐ │
 │  │                        自动化层                                     │ │
-│  │     schedule-checkin (拉取式)  │  _pm_stop_hook (推送式)  │  auto-commit │
+│  │  schedule-checkin │ _pm_stop_hook │ _pm_prompt_hook │ auto-commit  │ │
+│  │     (拉取式)      │   (推送式)     │   (推送式)       │   (定时式)   │ │
 │  └────────────────────────────────────────────────────────────────────┘ │
 │                                    │                                     │
 │                                    ▼                                     │
@@ -93,7 +94,8 @@
 | 组件 | 模式 | 底层机制 | 通知 PM |
 |------|------|----------|---------|
 | **schedule-checkin** | 拉取式 | `at` 命令定时触发 | 间接（唤醒 Agent） |
-| **_pm_stop_hook** | 推送式 | Claude Hook 事件触发 | **直接** |
+| **_pm_stop_hook** | 推送式 | Claude Stop 事件触发 | **直接** |
+| **_pm_prompt_hook** | 推送式 | Claude UserPromptSubmit 事件触发 | **直接** |
 | **start-auto-commit** | 定时式 | 后台进程 + `sleep` 循环 | 否 |
 
 #### Hook 推送式通知架构
@@ -131,6 +133,40 @@
 5. **PM 通知**：向 PM 窗口（Claude/pm）发送格式化通知
 
 **防抖机制**：相同状态不重复通知，避免重复触发。
+
+#### Prompt Hook 人类介入检测
+
+```
+   Human                         _pm_prompt_hook                    PM Agent
+     │                                 │                               │
+     │  直接向 dev-1 发送消息           │                               │
+     │─────────────────────────────────▶                               │
+     │                                 │                               │
+     │              UserPromptSubmit 事件触发                           │
+     │                                 │                               │
+     │                        1. 获取窗口信息                           │
+     │                           (via TMUX_PANE)                       │
+     │                                 │                               │
+     │                        2. 检测当前状态                           │
+     │                           (非 working?)                         │
+     │                                 │                               │
+     │                        3. 调用 pm-mark working                  │
+     │                                 │                               │
+     │                        4. tsc 发送通知                           │
+     │                                 │───────────────────────────────▶
+     │                                 │    "[Hook] dev-1: 人类介入"    │
+     ▼                                 ▼                               ▼
+```
+
+**核心流程**：
+
+1. **事件触发**：人类用户直接向 Agent 槽位发送消息
+2. **Hook 执行**：Claude UserPromptSubmit 事件触发 `_pm_prompt_hook`
+3. **状态检测**：检查当前槽位状态，如果不是 `working` 则需要更新
+4. **状态更新**：调用 `pm-mark` 更新为 `working`
+5. **PM 通知**：向 PM 窗口发送人类介入通知
+
+**解决问题**：当 PM 分配任务后，人类直接介入 Agent 工作时，PM 不知道 Agent 已重新开始工作。
 
 #### TMUX_PANE 环境变量
 
@@ -172,7 +208,8 @@ _get_tmux_info() {
 
 | 函数 | 使用场景 |
 |------|----------|
-| `_pm_stop_hook` | Hook 中获取正确的槽位名 |
+| `_pm_stop_hook` | Stop Hook 中获取正确的槽位名 |
+| `_pm_prompt_hook` | Prompt Hook 中获取正确的槽位名 |
 | `tsc` | 添加正确的消息来源前缀 |
 | `get-role` | 推断当前窗口角色 |
 | `schedule-checkin` | 确定唤醒目标窗口 |
@@ -313,7 +350,8 @@ tsc dev-1 "API 完成了"
 | 用户 | Agent | `fire` / `tsc` | 启动任务 |
 | Agent | Agent | `tsc` | 跨窗口协调 |
 | Agent | 自己 | `schedule-checkin` → `at` → `tsc` | 自我唤醒 |
-| Engineer | PM | `_pm_stop_hook` | 状态推送 |
+| Engineer | PM | `_pm_stop_hook` | 任务完成/出错时状态推送 |
+| 人类 | PM | `_pm_prompt_hook` | 人类介入 Agent 时通知 |
 | PM | Engineer | `pm-assign` → `tsc` | 任务分配 |
 | PM | 所有 Agent | `pm-broadcast` | 广播通知 |
 
@@ -346,6 +384,33 @@ tsc dev-1 "API 完成了"
       │─────────────────────────────▶│                        │
       ▼                              ▼                        ▼
 ```
+
+#### 人类介入场景
+
+```
+     PM                      Human (人类)             Engineer          系统
+      │                           │                       │               │
+  T0  │  pm-assign dev-1 "任务"   │                       │               │
+      │───────────────────────────────────────────────────▶               │
+      │                           │                       │  开始工作      │
+      │                           │                       │               │
+ T10  │                           │  直接发送消息          │               │
+      │                           │──────────────────────▶│               │
+      │                           │                       │               │
+      │                           │     UserPromptSubmit 触发              │
+      │◀──────────────────────────────────────────────────────── Hook ────│
+      │  "[Hook] dev-1: 人类介入"  │                       │               │
+      │                           │                       │               │
+      │  [PM 知道人类介入]         │                       │  继续工作      │
+      │                           │                       │               │
+ T30  │                           │                       │ [STATUS:DONE] │
+      │                           │                       │──────────────▶│
+      │◀───────────────────────────────────────────────────── Hook ───────│
+      │  "dev-1 完成"              │                       │               │
+      ▼                           ▼                       ▼               ▼
+```
+
+**人类介入通知的价值**：PM 不再遗漏人类直接操作 Agent 的情况，保持完整的任务追踪。
 
 ---
 
@@ -389,6 +454,7 @@ atq                 # 查看待执行任务
 | 任务分配 | `pm-assign` | ✅ 已有 |
 | 状态监控 | `pm-status`, `pm-check` | ✅ 已有 |
 | 状态推送 | `_pm_stop_hook` | ✅ 已有 |
+| 人类介入检测 | `_pm_prompt_hook` | ✅ 已有 |
 | 自调度 | `schedule-checkin` | ✅ 已有 |
 | 消息溯源 | `tsc` 自动添加来源 | ✅ 已有 |
 | 角色识别 | `get-role` 命名规则 | ✅ 已有 |

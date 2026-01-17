@@ -1,5 +1,5 @@
 ---
-description: 作为 QA 工程师进行测试和质量保证
+description: QA 工程师 - 测试和质量保证
 allowedTools: ["Bash", "Edit", "Glob", "Grep", "Read", "Task", "TodoRead", "TodoWrite", "Write"]
 ---
 
@@ -186,7 +186,7 @@ TEST REPORT [QA → PM]
 ### 注意事项
 
 - 每个测试任务最终必须输出一个状态标记
-- PM 会通过 `/tmuxAI:pm-check` 读取你的状态
+- PM 会通过 `/tmuxAI:pm:check` 读取你的状态
 - 发现问题时使用 `[STATUS:ERROR]`，等待修复用 `[STATUS:BLOCKED]`
 
 ## Claude 快捷命令

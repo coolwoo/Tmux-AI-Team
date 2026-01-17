@@ -1,5 +1,5 @@
 ---
-description: 查看所有槽位的当前状态面板
+description: 查看所有槽位状态面板
 allowedTools: ["Bash"]
 ---
 

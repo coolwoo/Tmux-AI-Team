@@ -1,6 +1,17 @@
 {
   "$schema": "https://schema.claude.ai/claude-code-settings.json",
   "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c 'source ~/.ai-automation.sh && _pm_prompt_hook'",
+            "timeout": 5000
+          }
+        ]
+      }
+    ],
     "Stop": [
       {
         "hooks": [

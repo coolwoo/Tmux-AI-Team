@@ -1,5 +1,5 @@
 ---
-description: 作为开发工程师执行具体开发任务
+description: 开发工程师 - 编码、测试、重构
 allowedTools: ["Bash", "Edit", "Glob", "Grep", "Read", "Task", "TodoRead", "TodoWrite", "Write"]
 ---
 
@@ -166,7 +166,7 @@ REVIEW RESPONSE [Developer → Reviewer]
 ### 注意事项
 
 - 每个任务最终必须输出一个状态标记
-- PM 会通过 `/tmuxAI:pm-check` 读取你的状态
+- PM 会通过 `/tmuxAI:pm:check` 读取你的状态
 - 如果需要帮助，使用 `[STATUS:BLOCKED]` 并说明原因
 
 ## Claude 快捷命令

@@ -1,5 +1,5 @@
 ---
-description: 初始化 PM 槽位管理（默认创建 dev-1）
+description: 初始化槽位（默认创建 dev-1）
 allowedTools: ["Bash"]
 ---
 
@@ -32,6 +32,6 @@ pm-add-slot dev-3   # 可添加任意名称的槽位
 
 ## 后续操作
 
-- `/tmuxAI:pm-assign` - 分配任务到槽位
-- `/tmuxAI:pm-status` - 查看槽位状态面板
+- `/tmuxAI:pm:2-assign` - 分配任务到槽位
+- `/tmuxAI:pm:3-status` - 查看槽位状态面板
 - `pm-list-slots` - 查看当前槽位列表

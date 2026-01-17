@@ -1,5 +1,5 @@
 ---
-description: 作为项目经理监督工程师执行，定期检查进度
+description: PM 监督模式 - 管理槽位和任务分配
 allowedTools: ["Bash", "Edit", "Glob", "Grep", "Read", "Task", "TodoRead", "TodoWrite", "Write"]
 ---
 
@@ -40,8 +40,11 @@ Engineer 完成任务时会输出状态标记，Hook 自动推送通知给你：
 | `[dev-1] [STATUS:DONE] ...` | 任务完成 | 验收成果，分配下一任务 |
 | `[dev-1] [STATUS:ERROR] ...` | 遇到错误 | 主动介入帮助 |
 | `[dev-1] [STATUS:BLOCKED] ...` | 任务阻塞 | 协调资源或调整任务 |
+| `[Hook] dev-1: 人类介入...` | 人类直接操作 Agent | 知晓状态变化，必要时调整计划 |
 
 **优势**：无需主动轮询，等待通知即可。
+- Stop Hook: Agent 完成/出错/阻塞时自动通知
+- Prompt Hook: 人类直接介入 Agent 时自动通知
 
 ### 2.2 主动监督
 

@@ -71,7 +71,7 @@ fire my-project
 在 Claude 中执行：
 
 ```bash
-/tmuxAI:pm-init
+/tmuxAI:pm:1-init
 ```
 
 这会创建默认的 `dev-1` 槽位。
@@ -79,14 +79,14 @@ fire my-project
 ### 步骤 3: 分配任务
 
 ```bash
-/tmuxAI:pm-assign dev-1 role-developer "实现用户登录 API"
+/tmuxAI:pm:2-assign dev-1 role-developer "实现用户登录 API"
 ```
 
 ### 步骤 4: 监控进度
 
 ```bash
-/tmuxAI:pm-status     # 查看状态面板
-/tmuxAI:pm-check dev-1  # 检测槽位状态
+/tmuxAI:pm:3-status     # 查看状态面板
+/tmuxAI:pm:check dev-1  # 检测槽位状态
 ```
 
 ---
@@ -121,13 +121,13 @@ fire my-project
 
 | 命令 | 说明 |
 |------|------|
-| `/tmuxAI:pm-init` | 初始化槽位管理（默认创建 dev-1） |
-| `/tmuxAI:pm-assign <slot> <role> <task>` | 分配任务到槽位 |
-| `/tmuxAI:pm-status` | 查看状态面板 |
-| `/tmuxAI:pm-check <slot>` | 智能检测槽位状态 |
-| `/tmuxAI:pm-mark <slot> <status>` | 手动标记状态 |
-| `/tmuxAI:pm-broadcast <msg>` | 广播消息到工作中的槽位 |
-| `/tmuxAI:pm-history` | 查看 PM 操作历史 |
+| `/tmuxAI:pm:1-init` | 初始化槽位管理（默认创建 dev-1） |
+| `/tmuxAI:pm:2-assign <slot> <role> <task>` | 分配任务到槽位 |
+| `/tmuxAI:pm:3-status` | 查看状态面板 |
+| `/tmuxAI:pm:check <slot>` | 智能检测槽位状态 |
+| `/tmuxAI:pm:mark <slot> <status>` | 手动标记状态 |
+| `/tmuxAI:pm:broadcast <msg>` | 广播消息到工作中的槽位 |
+| `/tmuxAI:pm:history` | 查看 PM 操作历史 |
 
 ### Bash 函数 (在终端使用)
 
@@ -173,7 +173,7 @@ fi
 
 ## 状态面板
 
-执行 `/tmuxAI:pm-status` 显示：
+执行 `/tmuxAI:pm:3-status` 显示：
 
 ```
 ╔═══════════════════════════════════════════════════════════════════════════╗
@@ -203,7 +203,7 @@ fi
 
 ## 状态标记协议
 
-子 Agent 通过输出格式化标记汇报状态，PM 使用 `/tmuxAI:pm-check` 或 Hook 自动解析：
+子 Agent 通过输出格式化标记汇报状态，PM 使用 `/tmuxAI:pm:check` 或 Hook 自动解析：
 
 | 标记 | 用途 | PM 行为 |
 |------|------|---------|
@@ -228,28 +228,28 @@ fi
 ## PM 工作流程
 
 ```
-1. /tmuxAI:pm-init                    # 初始化槽位 (创建 dev-1)
+1. /tmuxAI:pm:1-init                    # 初始化槽位 (创建 dev-1)
    ↓
 2. pm-add-slot dev-2                  # 按需添加更多槽位
    pm-add-slot qa
    ↓
-3. /tmuxAI:pm-assign dev-1 role-developer "任务A"
-   /tmuxAI:pm-assign dev-2 role-developer "任务B"
+3. /tmuxAI:pm:2-assign dev-1 role-developer "任务A"
+   /tmuxAI:pm:2-assign dev-2 role-developer "任务B"
    ↓
-4. /tmuxAI:pm-status                  # 查看状态面板
+4. /tmuxAI:pm:3-status                  # 查看状态面板
    ↓
 5. (等待一段时间，或收到 Hook 通知)
    ↓
-6. /tmuxAI:pm-check dev-1             # 智能检测状态
-   /tmuxAI:pm-check dev-2             # 自动解析 [STATUS:*]
+6. /tmuxAI:pm:check dev-1             # 智能检测状态
+   /tmuxAI:pm:check dev-2             # 自动解析 [STATUS:*]
    ↓
-7. /tmuxAI:pm-assign qa role-qa "测试登录功能"
+7. /tmuxAI:pm:2-assign qa role-qa "测试登录功能"
    ↓
-8. /tmuxAI:pm-check qa                # 检测测试结果
+8. /tmuxAI:pm:check qa                # 检测测试结果
    ↓
-9. /tmuxAI:pm-broadcast "准备提交代码"
+9. /tmuxAI:pm:broadcast "准备提交代码"
    ↓
-10. /tmuxAI:pm-history                # 查看完整记录
+10. /tmuxAI:pm:history                # 查看完整记录
 ```
 
 ---
@@ -373,7 +373,7 @@ PM 操作日志保存在 `$AGENT_LOG_DIR/pm_<session>_<date>.log`：
 [2026-01-17 14:30:00] [MARK] [dev-1] done (耗时: 28分钟)
 ```
 
-使用 `/tmuxAI:pm-history` 查看日志。
+使用 `/tmuxAI:pm:history` 查看日志。
 
 ---
 
@@ -386,32 +386,32 @@ PM 操作日志保存在 `$AGENT_LOG_DIR/pm_<session>_<date>.log`：
 fire auth-project
 
 # 2. 在 Claude (PM) 中初始化
-/tmuxAI:pm-init
+/tmuxAI:pm:1-init
 pm-add-slot dev-2
 pm-add-slot qa
 
 # 3. 分配开发任务
-/tmuxAI:pm-assign dev-1 role-developer "实现注册 API"
-/tmuxAI:pm-assign dev-2 role-developer "实现登录 API"
+/tmuxAI:pm:2-assign dev-1 role-developer "实现注册 API"
+/tmuxAI:pm:2-assign dev-2 role-developer "实现登录 API"
 
 # 4. 查看状态
-/tmuxAI:pm-status
+/tmuxAI:pm:3-status
 
 # 5. 等待或定时检查
 schedule-checkin 20 "检查开发进度"
 
 # 6. 检测完成情况
-/tmuxAI:pm-check dev-1
-/tmuxAI:pm-check dev-2
+/tmuxAI:pm:check dev-1
+/tmuxAI:pm:check dev-2
 
 # 7. 分配测试
-/tmuxAI:pm-assign qa role-qa "测试注册和登录功能"
+/tmuxAI:pm:2-assign qa role-qa "测试注册和登录功能"
 
 # 8. 验收
-/tmuxAI:pm-check qa
+/tmuxAI:pm:check qa
 
 # 9. 广播完成
-/tmuxAI:pm-broadcast "所有功能验收通过，准备提交"
+/tmuxAI:pm:broadcast "所有功能验收通过，准备提交"
 ```
 
 ---
@@ -428,7 +428,7 @@ pm-list-slots
 tmux list-windows
 
 # 初始化槽位
-/tmuxAI:pm-init
+/tmuxAI:pm:1-init
 ```
 
 ### 问题: 状态显示过时
@@ -440,7 +440,7 @@ tmux list-windows
 pm-mark dev-1 idle
 
 # 或重新检测
-/tmuxAI:pm-check dev-1
+/tmuxAI:pm:check dev-1
 ```
 
 ### 问题: Agent 无响应

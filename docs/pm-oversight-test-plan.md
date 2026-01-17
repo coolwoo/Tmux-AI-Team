@@ -49,7 +49,7 @@ gary@DESKTOP-25KGMI5:~$
 
 | 步骤 | 命令 | 预期结果 |
 |------|------|----------|
-| 2.1 | `/tmuxAI:pm-init` | 创建 dev-1 窗口，显示"初始化完成" |
+| 2.1 | `/tmuxAI:pm:1-init` | 创建 dev-1 窗口，显示"初始化完成" |
 | 2.2 | `pm-status` | 显示 dev-1 槽位，状态 ready |
 | 2.3 | `pm-list-slots` | 输出 `dev-1` |
 
@@ -59,7 +59,7 @@ gary@DESKTOP-25KGMI5:~$
 
 | 步骤 | 命令 | 预期结果 |
 |------|------|----------|
-| 3.1 | `/tmuxAI:pm-oversight` | **无需参数**，自动执行 pm-status |
+| 3.1 | `/tmuxAI:start:pm-oversight` | **无需参数**，自动执行 pm-status |
 | 3.2 | 观察输出 | 显示当前槽位状态面板 |
 | 3.3 | 观察行为 | 根据状态给出下一步建议 |
 
@@ -133,8 +133,8 @@ gary@DESKTOP-25KGMI5:~$
 fire test-pm
 
 # 在 Claude 中依次执行：
-/tmuxAI:pm-init
-/tmuxAI:pm-oversight
+/tmuxAI:pm:1-init
+/tmuxAI:start:pm-oversight
 pm-assign dev-1 developer "echo hello"
 pm-status
 pm-check dev-1

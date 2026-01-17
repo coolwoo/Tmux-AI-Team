@@ -12,19 +12,19 @@
 
 | 角色 | 命令 | 用途 |
 |------|------|------|
-| Developer | `/tmuxAI:role-developer` | 开发工程师，实现功能和修复 Bug |
-| QA | `/tmuxAI:role-qa` | QA 工程师，测试和质量保证 |
-| DevOps | `/tmuxAI:role-devops` | DevOps 工程师，部署和基础设施 |
-| Reviewer | `/tmuxAI:role-reviewer` | 代码审查员，代码评审 |
+| Developer | `/tmuxAI:roles:developer` | 开发工程师，实现功能和修复 Bug |
+| QA | `/tmuxAI:roles:qa` | QA 工程师，测试和质量保证 |
+| DevOps | `/tmuxAI:roles:devops` | DevOps 工程师，部署和基础设施 |
+| Reviewer | `/tmuxAI:roles:reviewer` | 代码审查员，代码评审 |
 
 **使用方式**：
 
 ```bash
 # PM 通过 pm-assign 分配角色和任务
-/tmuxAI:pm-assign dev-1 role-developer "实现用户登录 API"
+/tmuxAI:pm:2-assign dev-1 role-developer "实现用户登录 API"
 
 # 或直接在 Agent 窗口激活角色
-/tmuxAI:role-developer 实现用户登录 API
+/tmuxAI:roles:developer 实现用户登录 API
 ```
 
 ---
@@ -58,7 +58,7 @@
 
 ## 1. Developer (开发工程师)
 
-**命令**: `/tmuxAI:role-developer <任务描述>`
+**命令**: `/tmuxAI:roles:developer <任务描述>`
 
 **职责**:
 - 编写高质量代码
@@ -89,7 +89,7 @@ git tag stable-功能名-$(date +%Y%m%d)
 
 ## 2. QA (QA 工程师)
 
-**命令**: `/tmuxAI:role-qa <测试任务描述>`
+**命令**: `/tmuxAI:roles:qa <测试任务描述>`
 
 **职责**:
 - 编写和执行测试用例
@@ -117,7 +117,7 @@ git tag stable-功能名-$(date +%Y%m%d)
 
 ## 3. DevOps (DevOps 工程师)
 
-**命令**: `/tmuxAI:role-devops <任务描述>`
+**命令**: `/tmuxAI:roles:devops <任务描述>`
 
 **职责**:
 - 部署和发布管理
@@ -144,7 +144,7 @@ git tag stable-功能名-$(date +%Y%m%d)
 
 ## 4. Reviewer (代码审查员)
 
-**命令**: `/tmuxAI:role-reviewer <审查范围/PR/分支>`
+**命令**: `/tmuxAI:roles:reviewer <审查范围/PR/分支>`
 
 **职责**:
 - 代码风格检查
@@ -171,7 +171,7 @@ git tag stable-功能名-$(date +%Y%m%d)
 
 ## 团队部署 (deploy-team)
 
-**命令**: `/tmuxAI:deploy-team <项目名称> [small|medium|large] [任务描述]`
+**命令**: `/tmuxAI:start:deploy-team <项目名称> [small|medium|large] [任务描述]`
 
 根据项目规模自动部署合适的 Agent 团队。
 
@@ -187,13 +187,13 @@ git tag stable-功能名-$(date +%Y%m%d)
 
 ```bash
 # 小型项目
-/tmuxAI:deploy-team my-project small 修复登录 Bug
+/tmuxAI:start:deploy-team my-project small 修复登录 Bug
 
 # 中型项目（默认）
-/tmuxAI:deploy-team my-project medium 实现用户认证系统
+/tmuxAI:start:deploy-team my-project medium 实现用户认证系统
 
 # 大型项目
-/tmuxAI:deploy-team my-project large 重构订单系统
+/tmuxAI:start:deploy-team my-project large 重构订单系统
 ```
 
 ### 团队结构
@@ -241,7 +241,7 @@ tsc -r dev-1 "请继续下一个任务"
 | `[STATUS:BLOCKED] 说明` | 被阻塞 |
 | `[STATUS:PROGRESS] 说明` | 进度更新 |
 
-PM 通过 `/tmuxAI:pm-check` 或 Hook 自动检测这些标记。
+PM 通过 `/tmuxAI:pm:check` 或 Hook 自动检测这些标记。
 
 ---
 

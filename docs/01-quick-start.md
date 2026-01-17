@@ -236,9 +236,9 @@ AI 项目经理在同一会话内监督 Engineer Agent，适合无人值守。
 fire my-project
 
 # 在 Claude 中运行 PM 命令
-/tmuxAI:pm-init                              # 初始化槽位 (创建 dev-1)
-/tmuxAI:pm-assign dev-1 developer "实现用户登录功能"
-/tmuxAI:pm-status                            # 查看状态面板
+/tmuxAI:pm:1-init                              # 初始化槽位 (创建 dev-1)
+/tmuxAI:pm:2-assign dev-1 developer "实现用户登录功能"
+/tmuxAI:pm:3-status                            # 查看状态面板
 ```
 
 **架构**:

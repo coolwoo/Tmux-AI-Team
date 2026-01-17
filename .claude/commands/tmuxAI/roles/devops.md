@@ -1,5 +1,5 @@
 ---
-description: 作为 DevOps 工程师处理部署和基础设施
+description: DevOps 工程师 - 部署和基础设施
 allowedTools: ["Bash", "Edit", "Glob", "Grep", "Read", "Task", "TodoRead", "TodoWrite", "Write"]
 ---
 
@@ -203,7 +203,7 @@ INCIDENT ALERT [DevOps → Team]
 ### 注意事项
 
 - 每个部署/运维任务最终必须输出一个状态标记
-- PM 会通过 `/tmuxAI:pm-check` 读取你的状态
+- PM 会通过 `/tmuxAI:pm:check` 读取你的状态
 - 失败时使用 `[STATUS:ERROR]`，等待条件用 `[STATUS:BLOCKED]`
 
 ## Claude 快捷命令

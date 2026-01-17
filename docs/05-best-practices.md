@@ -9,15 +9,15 @@
 ```
 1. fire my-project              # 启动项目
    ↓
-2. /tmuxAI:pm-init              # 初始化槽位
+2. /tmuxAI:pm:1-init              # 初始化槽位
    ↓
 3. pm-add-slot dev-2            # 按需添加槽位
    pm-add-slot qa
    ↓
-4. /tmuxAI:pm-assign dev-1 role-developer "具体任务"
+4. /tmuxAI:pm:2-assign dev-1 role-developer "具体任务"
    ↓
-5. /tmuxAI:pm-status            # 监控状态
-   /tmuxAI:pm-check dev-1       # 智能检测
+5. /tmuxAI:pm:3-status            # 监控状态
+   /tmuxAI:pm:check dev-1       # 智能检测
    ↓
 6. 收到 [STATUS:DONE] → 验收
    收到 [STATUS:ERROR] → 介入
@@ -32,10 +32,10 @@
 
 ```bash
 # ✅ 正确: 具体、可验证的任务
-/tmuxAI:pm-assign dev-1 role-developer "实现用户登录 API，包含 JWT 认证"
+/tmuxAI:pm:2-assign dev-1 role-developer "实现用户登录 API，包含 JWT 认证"
 
 # ❌ 错误: 模糊的任务
-/tmuxAI:pm-assign dev-1 role-developer "做一些改进"
+/tmuxAI:pm:2-assign dev-1 role-developer "做一些改进"
 ```
 
 ### 2. 状态标记

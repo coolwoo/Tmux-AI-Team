@@ -206,18 +206,18 @@ fire my-project
 
 # 终端 2: 启动 PM Agent
 claude
-/tmuxAI:pm-oversight my-project 实现用户认证系统
+/tmuxAI:start:pm-oversight my-project 实现用户认证系统
 ```
 
 **v3.4 新增**: PM 槽位管理，支持同时管理多个工作槽位：
 
 ```bash
 # PM Agent 执行
-/tmuxAI:pm-init                                    # 初始化槽位
-/tmuxAI:pm-assign dev-1 role-developer "实现API"   # 分配任务
-/tmuxAI:pm-assign dev-2 role-developer "实现UI"    # 并行开发
-/tmuxAI:pm-status                                  # 查看状态面板
-/tmuxAI:pm-check dev-1                             # 智能检测完成状态
+/tmuxAI:pm:1-init                                       # 初始化槽位
+/tmuxAI:pm:2-assign dev-1 roles-developer "实现API"      # 分配任务
+/tmuxAI:pm:2-assign dev-2 roles-developer "实现UI"       # 并行开发
+/tmuxAI:pm:3-status                                      # 查看状态面板
+/tmuxAI:pm:check dev-1                                   # 智能检测完成状态
 ```
 
 详见 [PM 监督模式手册](docs/03-pm-oversight-mode.md)
@@ -347,14 +347,13 @@ Tmux-AI-Team/
 ├── README.md                      # 本文件
 ├── CLAUDE.md                      # Claude Code 项目指南
 ├── bashrc-ai-automation-v2.sh     # Bash 函数 (核心)
-├── AI-Project-Automation-Manual-v2.md  # 用户手册
 ├── .claude/
 │   ├── TMUX_AI.md                 # Agent 上下文模板 (自包含，237行)
 │   └── commands/tmuxAI/           # Claude Code 斜杠命令
-│       ├── pm-oversight.md        # PM 监督模式
-│       ├── pm-*.md                # PM 槽位管理命令 (7个)
-│       ├── deploy-team.md         # 团队部署
-│       └── role-*.md              # 角色命令 (4个)
+│       ├── README.md              # 命令导航
+│       ├── start/                 # 入口命令 (2个)
+│       ├── pm/                    # PM 槽位管理 (7个)
+│       └── roles/                 # 角色命令 (4个)
 ├── hooks/                         # Claude Code Hook 配置
 │   ├── CLAUDE.md                  # Hook 使用说明
 │   └── settings.template.json     # Stop Hook 配置模板

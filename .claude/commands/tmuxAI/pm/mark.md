@@ -1,5 +1,5 @@
 ---
-description: 手动标记槽位的任务状态
+description: 手动标记槽位状态
 allowedTools: ["Bash"]
 ---
 

@@ -17,6 +17,7 @@ graph LR
         BP["05-best-practices.md<br/>最佳实践"]
         PROMPTS["pm常用提示词.md<br/>PM 常用提示词"]
         TEST["pm-oversight-test-plan.md<br/>PM 监督模式测试计划"]
+        UNIT["unit-test-checklist.md<br/>单元测试清单"]
     end
 ```
 
@@ -30,6 +31,7 @@ graph LR
 | `05-best-practices.md` | 使用最佳实践和常见问题 | 4 |
 | `pm常用提示词.md` | PM 常用提示词参考 | 参考 |
 | `pm-oversight-test-plan.md` | PM 监督模式手动测试计划 | 测试 |
+| `unit-test-checklist.md` | 核心函数单元测试清单 (59/59 通过) | 开发 |
 
 ## 阅读建议
 
@@ -52,5 +54,5 @@ graph LR
 ## 相关链接
 
 - [项目根目录 CLAUDE.md](../CLAUDE.md) - 项目整体架构和函数索引
-- [斜杠命令参考](../.claude/commands/tmuxAI/CLAUDE.md) - Tmux-AI 核心命令
+- [斜杠命令参考](../.claude/commands/tmuxAI/README.md) - Tmux-AI 核心命令
 - [Agent 上下文模板](../.claude/TMUX_AI.md) - fire 启动时复制到目标项目

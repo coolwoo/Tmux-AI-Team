@@ -1,5 +1,5 @@
 ---
-description: 作为部署编排员根据项目规模部署合适的 Agent 团队
+description: 团队部署 - 按规模创建 Agent 团队
 allowedTools: ["Bash", "Edit", "Glob", "Grep", "Read", "Task", "TodoRead", "TodoWrite", "Write"]
 ---
 
@@ -173,7 +173,7 @@ Git 规则: 每 30 分钟提交一次。
 
 ### PM 监督
 ```
-使用 /tmuxAI:pm-oversight 或 /tmuxAI:pm-status 监控团队。
+使用 /tmuxAI:start:pm-oversight 或 /tmuxAI:pm:3-status 监控团队。
 - pm-status: 查看所有槽位状态
 - pm-check <slot>: 检测槽位完成状态
 - pm-broadcast: 向工作中的槽位广播消息

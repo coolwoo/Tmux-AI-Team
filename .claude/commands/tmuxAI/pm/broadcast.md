@@ -1,5 +1,5 @@
 ---
-description: 向所有工作中的 Agent 发送广播消息
+description: 广播消息给工作中的 Agent
 allowedTools: ["Bash"]
 ---
 

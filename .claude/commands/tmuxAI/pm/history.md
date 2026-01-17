@@ -1,5 +1,5 @@
 ---
-description: 查看 PM 操作日志，支持回溯开发流程
+description: 查看操作历史日志
 allowedTools: ["Bash"]
 ---
 

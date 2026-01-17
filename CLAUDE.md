@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-> 📅 Last updated: 2026-01-17
+> Last updated: 2026-01-18
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
@@ -14,9 +14,16 @@ AI 项目自动化工具包 - 将 tmux 与 Claude Code 集成，实现自主开�
 - PM 监督模式：项目内 PM 自动监督 Engineer Agent（一项目一PM）
 - 环境自检：自动检测依赖并提供安装建议
 
-设计文档:
+设计文档: @项目隔离PM.md
 
-@项目隔离PM.md
+## 仓库统计
+
+| 指标 | 数值 |
+|------|------|
+| 核心脚本 | `bashrc-ai-automation-v2.sh` (2464 行) |
+| 斜杠命令 | 42 个 (9 个命令组) |
+| 专家 Agents | 12 个 |
+| 用户文档 | 8 个 |
 
 ## 项目结构图
 
@@ -45,10 +52,9 @@ graph TB
 
         subgraph Commands["commands/"]
             subgraph TmuxAI["tmuxAI/"]
-                PM["pm-oversight.md"]
-                DEPLOY["deploy-team.md"]
-                ROLES["role-*.md (4个)"]
-                PMSLOTS["pm-*.md (7个)<br/>槽位管理 v3.5"]
+                START["start/<br/>pm-oversight, deploy-team"]
+                PM["pm/<br/>1-init, 2-assign, 3-status<br/>check, mark, broadcast, history"]
+                ROLES["roles/<br/>developer, qa, devops, reviewer"]
             end
             subgraph Other["其他命令组"]
                 SECURITY["security/ (10个)"]
@@ -120,9 +126,9 @@ flowchart TB
     subgraph Session["📦 tmux session: my-project"]
         subgraph Windows["窗口"]
             PM["🎯 Claude (PM)<br/>pm-init-slots<br/>pm-status"]
-            DEV1["👷 dev-1 (Developer)<br/>/tmuxAI:role-developer"]
+            DEV1["👷 dev-1 (Developer)<br/>/tmuxAI:roles:developer"]
             DEV2["👷 dev-2 (Developer)"]
-            QA["🧪 qa (QA)<br/>/tmuxAI:role-qa"]
+            QA["🧪 qa (QA)<br/>/tmuxAI:roles:qa"]
         end
         HOOK["🔗 Stop Hook"]
     end
@@ -143,12 +149,27 @@ flowchart TB
 
 | 模块 | 路径 | 说明 |
 |------|------|------|
-| 核心函数库 | [`bashrc-ai-automation-v2.sh`](bashrc-ai-automation-v2.sh) | 所有 Bash 函数定义 (约 2355 行) |
+| 核心函数库 | [`bashrc-ai-automation-v2.sh`](bashrc-ai-automation-v2.sh) | 所有 Bash 函数定义 (2464 行，17 个部分) |
 | Agent 上下文 | [`.claude/TMUX_AI.md`](.claude/TMUX_AI.md) | fire 启动时复制到目标项目 |
-| 斜杠命令 | [`.claude/commands/tmuxAI/`](.claude/commands/tmuxAI/) | PM、团队部署、角色命令 (14 个) |
+| tmuxAI 命令 | [`.claude/commands/tmuxAI/`](.claude/commands/tmuxAI/) | PM、团队部署、角色命令 (14 个) |
+| 其他命令组 | [`.claude/commands/`](.claude/commands/) | security, zcf, documentation 等 (28 个) |
 | 专家 Agents | [`.claude/agents/`](.claude/agents/) | 后端架构、代码搜索等专家 (12 个) |
-| Hook 集成 | [`hooks/`](hooks/) | Claude Code Hook 配置模板（核心逻辑在 `_pm_stop_hook` 函数） |
-| 用户文档 | [`docs/`](docs/) | 快速开始、使用手册、最佳实践 (5 个) |
+| Hook 集成 | [`hooks/`](hooks/) | Claude Code Hook 配置模板 |
+| 用户文档 | [`docs/`](docs/) | 快速开始、使用手册、最佳实践 (8 个) |
+
+### 命令组详情
+
+| 命令组 | 命令数 | 说明 |
+|--------|--------|------|
+| `tmuxAI/` | 14 | PM 监督、槽位管理、角色定义 |
+| `security/` | 9 | 安全审计、提示词注入测试 |
+| `zcf/` | 8 | Git 工作流、项目初始化 |
+| `anthropic/` | 3 | Memory Bank、TodoWrite 等 |
+| `documentation/` | 2 | README、Release Note 生成 |
+| `promptengineering/` | 2 | 提示词工程 |
+| `architecture/` | 1 | 架构模式说明 |
+| `cleanup/` | 1 | 上下文优化 |
+| `refactor/` | 2 | 重构分析 |
 
 ## 开发与测试
 
@@ -280,8 +301,33 @@ graph LR
 
     subgraph Hooks["Claude Code Hook"]
         stophook["_pm_stop_hook()"]
+        prompthook["_pm_prompt_hook()"]
     end
 ```
+
+### 核心脚本结构 (bashrc-ai-automation-v2.sh)
+
+脚本分为 17 个部分，按功能模块组织：
+
+| 部分 | 行号范围 | 说明 |
+|------|----------|------|
+| 1. 配置和环境变量 | 16-25 | `CODING_BASE`, `CLAUDE_CMD`, `DEFAULT_DELAY` 等 |
+| 2. 内部工具函数 | 27-418 | `_ai_*`, `_resolve_project_path`, `_get_tmux_info` |
+| 3. 环境检查 | 420-527 | `check-deps` |
+| 4. Claude 快捷命令 | 529-564 | `cld`, `clf` |
+| 5. 核心函数 | 566-773 | `tsc`, `get-role`, `fire`, `add-window` |
+| 6. 自调度 | 775-818 | `schedule-checkin`, `read-next-note` |
+| 7. Git 自动提交 | 820-877 | `start-auto-commit`, `stop-auto-commit` |
+| 8. 状态监控 | 879-1038 | `check-agent`, `monitor-agent`, `monitor-snapshot`, `find-window` |
+| 9. 通信协议 | 1040-1188 | `send-status`, `send-task`, `send-bug`, `send-ack`, `send-done`, `send-blocked` |
+| 10. 日志系统 | 1190-1297 | `init-agent-logs`, `log-message`, `capture-agent-log`, `view-agent-logs` |
+| 11. 系统健康检查 | 1299-1447 | `system-health`, `watch-health` |
+| 12. 会话管理 | 1449-1468 | `stop-project`, `goto` |
+| 13. PM 槽位管理 | 1470-2202 | `pm-init-slots`, `pm-add-slot`, `pm-assign`, `pm-status` 等 |
+| 14. Hook 入口 | 2204-2388 | `_pm_stop_hook`, `_pm_prompt_hook` |
+| 15. 别名 | 2390-2400 | `ts`, `tw`, `tp`, `send-to-agent` |
+| 16. 使用说明 | 2402-2457 | 注释形式的命令速查 |
+| 17. 初始化 | 2459-2464 | source 时执行 `_ai_quick_check` |
 
 ### 消息发送 (tsc)
 

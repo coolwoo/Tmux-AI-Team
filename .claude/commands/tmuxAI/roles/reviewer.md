@@ -1,5 +1,5 @@
 ---
-description: 作为代码审查员进行代码评审
+description: 代码审查员 - 代码评审
 allowedTools: ["Bash", "Edit", "Glob", "Grep", "Read", "Task", "TodoRead", "TodoWrite", "Write"]
 ---
 
@@ -293,7 +293,7 @@ REVIEW UPDATE [Reviewer → Developer]
 ### 注意事项
 
 - 每个审查任务最终必须输出一个状态标记
-- PM 会通过 `/tmuxAI:pm-check` 读取你的状态
+- PM 会通过 `/tmuxAI:pm:check` 读取你的状态
 - MUST_FIX 问题用 `[STATUS:ERROR]`，等待修复用 `[STATUS:BLOCKED]`
 
 ## Claude 快捷命令

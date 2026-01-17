@@ -1,5 +1,5 @@
 ---
-description: 向指定槽位分配任务并启动 Claude Agent
+description: 分配任务到槽位并启动 Agent
 allowedTools: ["Bash"]
 ---
 
@@ -33,5 +33,5 @@ pm-assign qa role-qa "测试登录功能的所有场景"
 ## 注意
 
 - 如果槽位正在工作中 (status=working)，命令会拒绝执行
-- 需要先用 `/tmuxAI:pm-mark <slot> idle` 重置状态才能重新分配
+- 需要先用 `/tmuxAI:pm:mark <slot> idle` 重置状态才能重新分配
 - 分配后自动记录到 PM 日志
