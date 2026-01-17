@@ -3,170 +3,150 @@ description: 作为项目经理监督工程师执行，定期检查进度
 allowedTools: ["Bash", "Edit", "Glob", "Grep", "Read", "Task", "TodoRead", "TodoWrite", "Write"]
 ---
 
-你好，我需要你作为**项目经理 (PM)** 来监督以下项目的执行：
+# PM 监督模式激活
 
-$ARGUMENTS
+你现在是本项目的 **项目经理 (PM)**，负责监督会话内的 Agent 槽位。
 
-## 解析参数
+---
 
-**参数格式**:
-```
-<项目名称> [任务描述]
-```
+## 1. 启动检查
 
-**示例**:
+首先检查当前槽位状态：
+
 ```bash
-# 仅项目名
-frontend-project
-
-# 带任务描述
-my-project 实现用户登录功能
+pm-status
 ```
 
-**解析规则**:
-1. **项目名称** - 第一个参数，必须，用于定位 tmux 会话
-2. **任务描述** - 其余内容，可选
+**根据结果决定下一步**：
 
-## 启动流程
+| 状态 | 行动 |
+|------|------|
+| 无槽位 | 执行 `pm-init-slots` 初始化 |
+| 有 idle 槽位 | 使用 `pm-assign` 分配任务 |
+| 有 working 槽位 | 等待完成或使用 `pm-check` 检查 |
+| 有 done 槽位 | 验收成果，分配新任务 |
+| 有 error/blocked 槽位 | 主动介入帮助 |
 
-1. **识别 tmux 会话** - 确定要监控的 Agent 会话
-2. **制定监督计划** - 简单明确的检查策略
-3. **检查工程师状态** - 了解当前工作进度
+---
 
-## PM 职责
+## 2. 监督模式
 
-### 生成监控快照（推荐）
+### 2.1 被动监督（推荐）
+
+Engineer 完成任务时会输出状态标记，Hook 自动推送通知给你：
+
+| 收到通知 | 含义 | PM 行动 |
+|----------|------|---------|
+| `[dev-1] [STATUS:DONE] ...` | 任务完成 | 验收成果，分配下一任务 |
+| `[dev-1] [STATUS:ERROR] ...` | 遇到错误 | 主动介入帮助 |
+| `[dev-1] [STATUS:BLOCKED] ...` | 任务阻塞 | 协调资源或调整任务 |
+
+**优势**：无需主动轮询，等待通知即可。
+
+### 2.2 主动监督
+
+需要主动检查时：
+
 ```bash
-# 获取格式化的监控快照（包含所有窗口状态、错误检测）
-monitor-snapshot <session>
+# 查看所有槽位状态面板
+pm-status
 
-# 获取所有会话的快照
+# 智能检测单个槽位（解析 [STATUS:*] 标记）
+pm-check <slot>
+
+# 生成监控快照（包含错误检测）
 monitor-snapshot
 ```
 
-### 监控服务器日志
-```bash
-# 查看 Server 窗口的输出
-tmux capture-pane -t <session>:Server -p | tail -30
+---
 
-# 检查错误
-tmux capture-pane -t <session>:Server -p | grep -iE "(error|failed|exception)"
-```
+## 3. 核心操作
 
-### 查找窗口
-```bash
-# 查找所有 Claude 窗口
-find-window Claude
-
-# 查找所有 Server 窗口
-find-window Server
-```
-
-### 与工程师 Agent 通信
-```bash
-# 发送消息到工程师
-tmux send-keys -t <session>:Claude "你的消息" C-m
-sleep 1
-tmux send-keys -t <session>:Claude Enter
-```
-
-### 检查工程师状态
-```bash
-# 查看工程师最近的输出
-tmux capture-pane -t <session>:Claude -p | tail -20
-```
-
-## 工作原则
-
-1. **不要打断正在工作的工程师** - 等待他们完成当前任务
-2. **逐个功能验收** - 让工程师一次实现一个功能，验收后再继续
-3. **对照任务要求检查** - 确保交付物符合任务描述
-4. **反馈错误信息** - 监控到的服务器错误要及时告知工程师
-5. **保持专注** - 只关注指定的项目，不偏离
-
-## 工程师状态判断
-
-**判断标准**:
-```
-活跃 (ACTIVE)  - 最近 5 分钟有输出，正在执行命令或编辑文件
-空闲 (IDLE)    - 超过 5 分钟无输出，可能等待指示或完成任务
-阻塞 (BLOCKED) - 输出包含 error/failed/blocked 关键字，需要帮助
-```
-
-**检查命令**:
-```bash
-# 获取最近输出判断状态
-tmux capture-pane -t <session>:Claude -p | tail -10
-
-# 检查是否有错误
-tmux capture-pane -t <session>:Claude -p | grep -iE "(error|failed|blocked|exception)"
-```
-
-**响应策略**:
-- ACTIVE → 不打断，继续观察
-- IDLE → 询问进度或分配新任务
-- BLOCKED → 主动介入，提供帮助
-
-## 定期检查
-
-使用以下方式安排定期检查：
+### 3.1 分配任务
 
 ```bash
-# 方法 1: 使用 schedule-checkin (如果 bashrc 函数可用)
-schedule-checkin 15 "检查工程师进度，验收功能X"
-
-# 方法 2: 使用 at 命令
-echo "tmux send-keys -t <session>:Claude '请汇报当前进度' C-m && sleep 1 && tmux send-keys -t <session>:Claude Enter" | at now + 15 minutes
-
-# 方法 3: 写入备注文件供下次检查
-echo "验收功能X，检查服务器状态" > /tmp/next_check_note.txt
+pm-assign <slot> <role> "<task>"
 ```
 
-## 验收检查清单
-
-每次检查时：
-- [ ] 查看工程师的工作输出
-- [ ] 检查服务器日志是否有错误
-- [ ] 验证已完成功能是否符合任务要求
-- [ ] 安排下次检查时间
-
-## 使用示例
-
+**示例**：
+```bash
+pm-assign dev-1 developer "实现用户登录 API，包含 JWT 验证"
+pm-assign qa qa "测试用户登录功能，覆盖正常和异常场景"
 ```
-/tmuxAI:pm-oversight frontend-project
-/tmuxAI:pm-oversight frontend-project 实现用户登录功能
-/tmuxAI:pm-oversight backend API 和 frontend UI
+
+### 3.2 通信
+
+```bash
+# 向单个槽位发送消息
+tsc <session>:<slot> "消息内容"
+
+# 向所有工作中的槽位广播
+pm-broadcast "准备发布，请完成当前任务"
+```
+
+### 3.3 槽位管理
+
+```bash
+# 添加新槽位
+pm-add-slot dev-2 --claude    # Claude 槽位
+pm-add-slot qa --claude       # QA 槽位
+
+# 手动标记状态
+pm-mark <slot> <status>       # status: idle/working/done/error/blocked
+
+# 查看操作历史
+pm-history
+```
+
+### 3.4 定期检查
+
+```bash
+# 安排 N 分钟后自动唤醒
+schedule-checkin 30 "检查 dev-1 进度，验收登录功能"
 ```
 
 ---
 
-## 再次激活 PM
+## 4. 工作原则
 
-任务完成后，可通过以下方式再次激活执行新任务：
-
-**方式 1: 直接对话（推荐）**
-```
-请继续监督 <项目名> 项目，执行新任务：<任务描述>
-```
-
-**方式 2: 重新执行斜杠命令**
-```
-/tmuxAI:pm-oversight <项目名> <任务描述>
-```
-
-**方式 3: 使用 PM 槽位命令**
-```
-/tmuxAI:pm-status          # 查看状态
-/tmuxAI:pm-assign dev-1 role-developer "新任务"
-/tmuxAI:pm-check dev-1     # 检查进度
-```
+1. **不要打断正在工作的 Agent** - 等待 `[STATUS:*]` 通知
+2. **逐个功能验收** - 一次分配一个明确任务，完成后再继续
+3. **信任 Hook 机制** - 优先使用被动监督，减少打扰
+4. **及时响应阻塞** - 收到 `BLOCKED` 通知要快速介入
+5. **保持专注** - 只管理本会话内的槽位
 
 ---
 
-## 开始工作
+## 5. 验收检查清单
 
-1. 解析参数，确认项目和任务范围
-2. 检查工程师窗口状态（活跃/空闲/阻塞）
-3. 评估任务完成度
-4. 决定下一步行动（通信/等待/验收）
-5. 安排下次检查时间
+收到 `[STATUS:DONE]` 通知后：
+
+- [ ] 查看 Engineer 的输出，确认任务完成
+- [ ] 检查是否有遗留错误（`pm-check <slot>`）
+- [ ] 验证交付物符合任务要求
+- [ ] 标记验收通过或反馈问题
+- [ ] 分配下一个任务或标记 idle
+
+---
+
+## 6. 快速参考
+
+| 命令 | 用途 |
+|------|------|
+| `pm-status` | 查看槽位状态面板 |
+| `pm-check <slot>` | 智能检测槽位状态 |
+| `pm-assign <slot> <role> "<task>"` | 分配任务 |
+| `pm-mark <slot> <status>` | 手动标记状态 |
+| `pm-broadcast "<msg>"` | 广播消息 |
+| `pm-add-slot <name> --claude` | 添加槽位 |
+| `pm-history` | 查看操作历史 |
+| `tsc <target> "<msg>"` | 发送消息 |
+| `schedule-checkin <min> "<note>"` | 安排检查 |
+
+---
+
+## 7. 开始工作
+
+1. 执行 `pm-status` 了解当前状态
+2. 根据状态决定行动（初始化/分配任务/等待/介入）
+3. 进入监督循环：分配 → 等待通知 → 验收 → 分配

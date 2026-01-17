@@ -346,7 +346,7 @@ pm-history
 | `/tmuxAI:role-qa <task>` | 作为 QA 进行测试 |
 | `/tmuxAI:role-devops <task>` | 作为 DevOps 处理部署 |
 | `/tmuxAI:role-reviewer <content>` | 作为 Reviewer 代码评审 |
-| `/tmuxAI:pm-oversight <project>` | 作为 PM 监督工程师 |
+| `/tmuxAI:pm-oversight` | 激活 PM 监督模式 |
 | `/tmuxAI:deploy-team <project> [size]` | 部署 Agent 团队 |
 
 ---

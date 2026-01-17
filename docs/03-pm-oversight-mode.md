@@ -141,6 +141,34 @@ fire my-project
 | `pm-wait-result <slot> [timeout]` | 等待槽位完成 |
 | `pm-send-and-wait <slot> <msg>` | 发送消息并等待结果 |
 
+### 智能检测机制
+
+`pm-assign` 和 `pm-add-slot` 使用**主动检测**判断 Claude 是否在运行，而非依赖被动状态变量：
+
+```bash
+# 通过 tmux 直接检测当前运行的命令
+pane_cmd=$(tmux display-message -t "$session:$slot" -p '#{pane_current_command}')
+
+if [[ "$pane_cmd" == "claude" ]]; then
+    # Claude 已在运行，直接操作
+else
+    # 需要启动 Claude
+fi
+```
+
+**优势**：
+
+| 对比项 | 被动状态变量 | 主动检测 |
+|--------|--------------|----------|
+| 准确性 | 可能过时 | **实时准确** |
+| 崩溃恢复 | 状态与实际不一致 | **自动适应** |
+| 手动干预 | 需要手动修复状态 | **无需干预** |
+
+**行为说明**：
+
+- **pm-add-slot**: 添加槽位时检测，如果 Claude 已运行则跳过启动
+- **pm-assign**: 分配任务时检测，如果 Claude 已运行则直接发送任务
+
 ---
 
 ## 状态面板

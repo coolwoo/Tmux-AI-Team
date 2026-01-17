@@ -320,6 +320,29 @@ _get_claude_cmd() {
     fi
 }
 
+# _get_tmux_info - 获取正确的 tmux 窗口/会话信息
+# 使用 $TMUX_PANE 确保在 Hook 环境中也能获取正确的窗口名
+# 用法:
+#   session=$(_get_tmux_info session)
+#   window=$(_get_tmux_info window)
+#   both=$(_get_tmux_info both)  # 返回 session:window
+_get_tmux_info() {
+    local type="${1:-both}"
+    local pane_id="${TMUX_PANE:-}"
+
+    case "$type" in
+        session)
+            tmux display-message -t "$pane_id" -p '#{session_name}' 2>/dev/null
+            ;;
+        window)
+            tmux display-message -t "$pane_id" -p '#{window_name}' 2>/dev/null
+            ;;
+        both)
+            tmux display-message -t "$pane_id" -p '#{session_name}:#{window_name}' 2>/dev/null
+            ;;
+    esac
+}
+
 #-------------------------------------------------------------------------------
 # 2.5 PM 槽位内部函数
 #-------------------------------------------------------------------------------
@@ -572,7 +595,7 @@ tsc() {
 
     local message="$*"
     if [[ "$raw" != true ]]; then
-        local from=$(tmux display-message -p '#{window_name}' 2>/dev/null)
+        local from=$(_get_tmux_info window)
         [[ -n "$from" ]] && message="[$from] $*"
     fi
 
@@ -586,7 +609,7 @@ tsc() {
 # 从窗口名推断角色
 # 用法: get-role [window_name]
 get-role() {
-    local window="${1:-$(tmux display-message -p '#{window_name}' 2>/dev/null)}"
+    local window="${1:-$(_get_tmux_info window)}"
     case "$window" in
         dev-*|dev)           echo "Developer" ;;
         qa-*|qa)             echo "QA" ;;
@@ -758,7 +781,7 @@ add-window() {
 schedule-checkin() {
     local minutes="$1"
     local note="$2"
-    local target="${3:-$(tmux display-message -p '#{session_name}:#{window_name}' 2>/dev/null)}"
+    local target="${3:-$(_get_tmux_info both)}"
 
     [ -z "$minutes" ] || [ -z "$note" ] && {
         echo "用法: schedule-checkin <分钟> <备注> [目标]"
@@ -789,7 +812,7 @@ schedule-checkin() {
 
 # 读取下次检查备注
 read-next-note() {
-    local target="${1:-$(tmux display-message -p '#{session_name}:#{window_name}' 2>/dev/null)}"
+    local target="${1:-$(_get_tmux_info both)}"
     local note_file="/tmp/next_check_note_${target//[:]/_}.txt"
     [ -f "$note_file" ] && cat "$note_file" || echo "无备注"
 }
@@ -1568,12 +1591,18 @@ pm-add-slot() {
     tmux set-environment -t "$session" "${var_prefix}_TYPE" "$mode"
 
     if [[ "$mode" == "claude" ]]; then
-        # Claude 模式：启动 Claude（智能选择模式）
-        local claude_cmd
-        claude_cmd=$(_get_claude_cmd "$(pwd)")
-        echo "启动 Claude ($claude_cmd)..."
-        tmux send-keys -t "$session:$slot" "$claude_cmd" Enter
-        _wait_for_claude "$session:$slot" 30
+        # 主动检测 Claude 是否已在运行
+        local pane_cmd=$(tmux display-message -t "$session:$slot" -p '#{pane_current_command}' 2>/dev/null)
+        if [[ "$pane_cmd" == "claude" ]]; then
+            echo "Claude 已在运行，跳过启动..."
+        else
+            # 启动 Claude（智能选择模式）
+            local claude_cmd
+            claude_cmd=$(_get_claude_cmd "$(pwd)")
+            echo "启动 Claude ($claude_cmd)..."
+            tmux send-keys -t "$session:$slot" "$claude_cmd" Enter
+            _wait_for_claude "$session:$slot" 30
+        fi
         tmux set-environment -t "$session" "${var_prefix}_STATUS" "ready"
         _pm_log "ADD_SLOT" "$slot" "添加 Claude 槽位"
         echo "✓ 添加 Claude 槽位: $slot (ready)"
@@ -1960,12 +1989,13 @@ pm-assign() {
         return 1
     fi
 
-    # 根据状态决定是否启动 Claude
-    if [[ "$status" == "ready" ]]; then
-        # ready 状态: Claude 已在运行，直接发送任务
-        echo "槽位 $slot 已就绪，直接分配任务..."
+    # 主动检测 Claude 是否在运行（比依赖状态变量更准确）
+    local pane_cmd=$(tmux display-message -t "$session:$slot" -p '#{pane_current_command}' 2>/dev/null)
+    if [[ "$pane_cmd" == "claude" ]]; then
+        # Claude 已在运行，直接发送任务
+        echo "槽位 $slot Claude 已在运行，直接分配任务..."
     else
-        # idle 或其他状态: 需要启动 Claude（智能选择模式）
+        # 需要启动 Claude（智能选择模式）
         local claude_cmd
         claude_cmd=$(_get_claude_cmd "$(pwd)")
         echo "启动 Claude 到 $slot ($claude_cmd)..."
@@ -2198,8 +2228,9 @@ _pm_stop_hook() {
     # 读取 stdin（Claude Code 传入的 JSON，可忽略）
     cat > /dev/null
 
-    local session=$(tmux display-message -p '#{session_name}' 2>/dev/null)
-    local window=$(tmux display-message -p '#{window_name}' 2>/dev/null)
+    # 使用 _get_tmux_info 获取正确的窗口名（使用 TMUX_PANE）
+    local session=$(_get_tmux_info session)
+    local window=$(_get_tmux_info window)
 
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] [DEBUG] _pm_stop_hook called, session=$session window=$window" >> "$debug_log"
 
@@ -2210,11 +2241,9 @@ _pm_stop_hook() {
     local slots=$(tmux show-environment -t "$session" PM_SLOTS 2>/dev/null | cut -d= -f2)
     local is_registered_slot=false
 
-    # 检查当前窗口是否是已注册的槽位
-    if [[ -n "$slots" ]]; then
-        for s in $slots; do
-            [[ "$s" == "$window" ]] && { is_registered_slot=true; break; }
-        done
+    # 检查当前窗口是否是已注册的槽位（slots 是逗号分隔的）
+    if [[ -n "$slots" ]] && echo ",$slots," | grep -q ",$window,"; then
+        is_registered_slot=true
     fi
 
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] [DEBUG] slots=[$slots] is_registered_slot=$is_registered_slot" >> "$debug_log"

@@ -266,7 +266,7 @@ cp hooks/settings.template.json /path/to/project/.claude/settings.json
 
 | 命令 | 说明 |
 |------|------|
-| `/tmuxAI:pm-oversight <项目> [任务描述]` | 启动 PM 监督 |
+| `/tmuxAI:pm-oversight` | 激活 PM 监督模式 |
 | `/tmuxAI:role-developer <任务>` | Developer 角色 |
 | `/tmuxAI:role-qa <任务>` | QA 角色 |
 | `/tmuxAI:role-devops <任务>` | DevOps 角色 |
