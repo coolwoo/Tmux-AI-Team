@@ -8,3 +8,7 @@ prompts/
 !.claude/commands/
 .claude/commands/*
 !.claude/commands/tmuxAI/
+
+# Cleanup temporary files
+.cleanup-analysis.json
+.cleanup-history.log
