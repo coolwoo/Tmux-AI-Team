@@ -331,52 +331,33 @@ graph LR
 
 ### 消息发送 (tsc)
 
-处理 Claude Code 的软回车问题，需要两次 Enter。已合并 `send-to-agent` 功能：
+向 tmux 窗口发送消息，自动处理 Claude Code 的双 Enter 问题。
 
 ```bash
-# 用法
-tsc <target> <message>      # 发送消息（默认输出确认信息）
-tsc -q <target> <message>   # 静默模式（不输出确认信息）
-
-# send-to-agent 现在是 tsc 的别名
-send-to-agent               # → 调用 tsc
-
-# 内部实现
-tsc() {
-    tmux send-keys -t "$target" "$message" C-m
-    sleep $delay
-    tmux send-keys -t "$target" Enter  # 第二次 Enter
-    [[ "$quiet" != true ]] && echo "✓ 已发送到 $target"
-}
+tsc <target> <message>      # 发送消息
+tsc -q <target> <message>   # 静默模式
 ```
+
+详见 [TMUX_AI.md - 消息发送](.claude/TMUX_AI.md#51-消息发送-tsc)
 
 ### Tmux 信息获取 (_get_tmux_info)
 
-在 Hook 环境中获取正确的 tmux 窗口/会话信息。解决后台窗口执行时获取错误窗口名的问题：
+在任何环境（包括 Hook 后台进程）中获取正确的 tmux 窗口/会话信息。
 
 ```bash
-# 用法
-session=$(_get_tmux_info session)   # 获取会话名
-window=$(_get_tmux_info window)     # 获取窗口名
-both=$(_get_tmux_info both)         # 返回 session:window
-
-# 内部实现 - 使用 $TMUX_PANE 定位正确的 pane
-_get_tmux_info() {
-    local type="${1:-both}"
-    local pane_id="${TMUX_PANE:-}"
-    tmux display-message -t "$pane_id" -p '#{session_name}:#{window_name}'
-}
+_get_tmux_info session   # 获取会话名
+_get_tmux_info window    # 获取窗口名
+_get_tmux_info both      # 返回 session:window
 ```
 
-以下函数使用 `_get_tmux_info`：`tsc`、`get-role`、`schedule-checkin`、`read-next-note`、`_pm_stop_hook`
+详见 [TMUX_AI.md - 辅助函数](.claude/TMUX_AI.md#71-辅助函数)
 
 ### 自调度 (schedule-checkin)
 
-使用 `at` 命令实现 Agent 自我唤醒：
+使用 `at` 命令实现 Agent 自我唤醒。详见 [TMUX_AI.md - 自调度机制](.claude/TMUX_AI.md#6-自调度机制)
 
 ```bash
 schedule-checkin 30 "检查进度"
-# → 30 分钟后向当前窗口发送 "继续工作" 消息
 ```
 
 ### 项目启动 (fire)
@@ -421,34 +402,16 @@ check-deps
 - **L1 重要级**：at, atd, git → 警告但允许继续
 - **L2 信息级**：watch, 日志目录 → 仅提示
 
-### Stop Hook (_pm_stop_hook)
+### Hook 集成 (Stop/Prompt)
 
-Claude Code Stop 事件触发的 Hook 函数，实现推送式状态通知：
+实现 PM 监督模式下的推送式状态通知：
 
-```bash
-# 配置方式 (项目 .claude/settings.json):
-{
-  "hooks": {
-    "Stop": [{
-      "hooks": [{
-        "type": "command",
-        "command": "bash -c 'source ~/.ai-automation.sh && _pm_stop_hook'",
-        "timeout": 10000
-      }]
-    }]
-  }
-}
-```
+| Hook | 触发时机 | 功能 |
+|------|----------|------|
+| `_pm_stop_hook` | Agent 停止时 | 检测 `[STATUS:*]` 标记，通知 PM |
+| `_pm_prompt_hook` | 用户输入时 | 检测人类介入，通知 PM |
 
-功能：
-- 检测 Agent 输出中的 `[STATUS:DONE/ERROR/BLOCKED]` 标记
-- 自动调用 `pm-mark` 更新状态（包含耗时计算）
-- 向 PM 窗口发送通知消息
-- 内置防抖机制（相同状态不重复通知）
-
-详细配置请参考 [`hooks/CLAUDE.md`](hooks/CLAUDE.md)。
-
-> **注意**: Hook 的核心逻辑在 `bashrc-ai-automation-v2.sh` 的 `_pm_stop_hook` 函数中，`hooks/settings.template.json` 仅作为配置模板。
+详细配置和工作原理请参考 [`hooks/CLAUDE.md`](hooks/CLAUDE.md)
 
 ## 配置
 
