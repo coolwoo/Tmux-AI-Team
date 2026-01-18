@@ -32,6 +32,7 @@ graph LR
 | `pm常用提示词.md` | PM 常用提示词参考 | 参考 |
 | `pm-oversight-test-plan.md` | PM 监督模式手动测试计划 | 测试 |
 | `unit-test-checklist.md` | 核心函数单元测试清单 (59/59 通过) | 开发 |
+| `CLAUDE.md` | 本索引文件 | - |
 
 ## 阅读建议
 

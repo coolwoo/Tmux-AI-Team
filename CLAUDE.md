@@ -21,9 +21,9 @@ AI 项目自动化工具包 - 将 tmux 与 Claude Code 集成，实现自主开�
 | 指标 | 数值 |
 |------|------|
 | 核心脚本 | `bashrc-ai-automation-v2.sh` (2464 行) |
-| 斜杠命令 | 42 个 (9 个命令组) |
-| 专家 Agents | 12 个 |
-| 用户文档 | 7 个 |
+| 斜杠命令 | 44 个 (9 个命令组) |
+| 专家 Agents | 13 个 |
+| 用户文档 | 8 个 |
 
 ## 项目结构图
 
@@ -152,10 +152,10 @@ flowchart TB
 | 核心函数库 | [`bashrc-ai-automation-v2.sh`](bashrc-ai-automation-v2.sh) | 所有 Bash 函数定义 (2464 行，17 个部分) |
 | Agent 上下文 | [`.claude/TMUX_AI.md`](.claude/TMUX_AI.md) | fire 启动时复制到目标项目 |
 | tmuxAI 命令 | [`.claude/commands/tmuxAI/`](.claude/commands/tmuxAI/) | PM、角色命令 (13 个) |
-| 其他命令组 | [`.claude/commands/`](.claude/commands/) | security, zcf, documentation 等 (29 个) |
-| 专家 Agents | [`.claude/agents/`](.claude/agents/) | 后端架构、代码搜索等专家 (12 个) |
+| 其他命令组 | [`.claude/commands/`](.claude/commands/) | security, zcf, documentation 等 (31 个) |
+| 专家 Agents | [`.claude/agents/`](.claude/agents/) | 后端架构、代码搜索等专家 (13 个) |
 | Hook 集成 | [`hooks/`](hooks/) | Claude Code Hook 配置模板 |
-| 用户文档 | [`docs/`](docs/) | 快速开始、使用手册、最佳实践 (7 个) |
+| 用户文档 | [`docs/`](docs/) | 快速开始、使用手册、最佳实践 (8 个) |
 
 ### 命令组详情
 
