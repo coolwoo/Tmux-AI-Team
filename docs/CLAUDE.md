@@ -16,8 +16,10 @@ graph LR
         ROLES["04-agent-roles.md<br/>Agent 角色指南"]
         BP["05-best-practices.md<br/>最佳实践"]
         PROMPTS["pm常用提示词.md<br/>PM 常用提示词"]
-        TEST["pm-oversight-test-plan.md<br/>PM 监督模式测试计划"]
-        UNIT["unit-test-checklist.md<br/>单元测试清单"]
+    end
+    subgraph Archive["archive/"]
+        TEST["pm-oversight-test-plan.md<br/>(已归档)"]
+        UNIT["unit-test-checklist.md<br/>(已归档)"]
     end
 ```
 
@@ -30,9 +32,9 @@ graph LR
 | `04-agent-roles.md` | Agent 角色定义（Developer, QA, DevOps, Reviewer） | 3 |
 | `05-best-practices.md` | 使用最佳实践和常见问题 | 4 |
 | `pm常用提示词.md` | PM 常用提示词参考 | 参考 |
-| `pm-oversight-test-plan.md` | PM 监督模式手动测试计划 | 测试 |
-| `unit-test-checklist.md` | 核心函数单元测试清单 (59/59 通过) | 开发 |
 | `CLAUDE.md` | 本索引文件 | - |
+| [`archive/pm-oversight-test-plan.md`](../archive/pm-oversight-test-plan.md) | PM 监督模式手动测试计划 (已归档) | 测试 |
+| [`archive/unit-test-checklist.md`](../archive/unit-test-checklist.md) | 核心函数单元测试清单 (已归档) | 开发 |
 
 ## 阅读建议
 
@@ -49,7 +51,7 @@ graph LR
 2. 了解如何协调多个 Agent 协作
 
 ### 开发/测试
-1. 阅读 `pm-oversight-test-plan.md` 了解手动测试流程
+1. 阅读 `archive/pm-oversight-test-plan.md` 了解手动测试流程
 2. 参考 `03-pm-oversight-mode.md` 的技术说明部分了解 Hook 实现
 
 ## 相关链接
