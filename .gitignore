@@ -12,3 +12,4 @@ prompts/
 # Cleanup temporary files
 .cleanup-analysis.json
 .cleanup-history.log
+archive/
