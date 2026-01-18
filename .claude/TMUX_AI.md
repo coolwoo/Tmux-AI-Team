@@ -489,7 +489,6 @@ Claude Code 的 UserPromptSubmit 事件触发 `_pm_prompt_hook` 函数，实现*
 | 命令 | 用途 |
 |------|------|
 | `/tmuxAI:start:pm-oversight` | 激活 PM 监督模式 |
-| `/tmuxAI:start:deploy-team <project> [size]` | 部署 Agent 团队 |
 
 ### 8.2 PM 槽位管理
 

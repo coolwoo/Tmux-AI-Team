@@ -713,7 +713,7 @@ fire() {
             mkdir -p "$target_cmd_dir"
             cp -r "$src_cmd_dir"/* "$target_cmd_dir/" 2>/dev/null
             local cmd_count=$(ls -1 "$target_cmd_dir"/*.md 2>/dev/null | wc -l)
-            echo "✓ 已复制斜杠命令 ($cmd_count 个: pm-oversight, deploy-team 等)"
+            echo "✓ 已复制斜杠命令 ($cmd_count 个: pm-oversight 等)"
         else
             echo "⚠ 目标项目已有斜杠命令目录，跳过复制"
         fi

@@ -169,54 +169,6 @@ git tag stable-功能名-$(date +%Y%m%d)
 
 ---
 
-## 团队部署 (deploy-team)
-
-**命令**: `/tmuxAI:start:deploy-team <项目名称> [small|medium|large] [任务描述]`
-
-根据项目规模自动部署合适的 Agent 团队。
-
-### 团队规模配置
-
-| 规模 | 适用场景 | 团队成员 |
-|------|---------|---------|
-| small | Bug 修复、单一功能 | PM + dev-1 |
-| medium | 新功能、模块重构 | PM + dev-1 + qa |
-| large | 系统重构、新产品 | PM + dev-1 + dev-2 + qa + devops |
-
-### 示例
-
-```bash
-# 小型项目
-/tmuxAI:start:deploy-team my-project small 修复登录 Bug
-
-# 中型项目（默认）
-/tmuxAI:start:deploy-team my-project medium 实现用户认证系统
-
-# 大型项目
-/tmuxAI:start:deploy-team my-project large 重构订单系统
-```
-
-### 团队结构
-
-```
-小型:              中型:                  大型:
-┌─────┐           ┌─────┐               ┌─────┐
-│ PM  │           │ PM  │               │ PM  │
-└──┬──┘           └──┬──┘               └──┬──┘
-   │              ┌──┴──┐           ┌─────┼─────┐
-   ▼              ▼     ▼           ▼     ▼     ▼
-┌─────┐        ┌─────┐ ┌────┐   ┌─────┐┌─────┐┌──────┐
-│dev-1│        │dev-1│ │ qa │   │dev-1││dev-2││devops│
-└─────┘        └─────┘ └────┘   └──┬──┘└──┬──┘└──────┘
-                                   └──┬───┘
-                                      ▼
-                                   ┌────┐
-                                   │ qa │
-                                   └────┘
-```
-
----
-
 ## 跨角色通信
 
 ### 使用 tsc 发送消息

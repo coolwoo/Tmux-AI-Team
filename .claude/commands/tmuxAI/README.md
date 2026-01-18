@@ -9,7 +9,6 @@
 | 命令 | 说明 |
 |------|------|
 | `/tmuxAI:start:pm-oversight` | PM 监督模式 - 管理槽位和任务分配 |
-| `/tmuxAI:start:deploy-team` | 团队部署 - 按规模创建 Agent 团队 |
 
 ---
 
@@ -52,8 +51,7 @@
 ```
 tmuxAI/
 ├── start/                  # 入口命令
-│   ├── pm-oversight.md
-│   └── deploy-team.md
+│   └── pm-oversight.md
 ├── pm/                     # PM 槽位管理
 │   ├── 1-init.md          # 核心流程
 │   ├── 2-assign.md
@@ -76,7 +74,6 @@ tmuxAI/
 | 旧命令 | 新命令 |
 |--------|--------|
 | `/tmuxAI:pm-oversight` | `/tmuxAI:start:pm-oversight` |
-| `/tmuxAI:deploy-team` | `/tmuxAI:start:deploy-team` |
 | `/tmuxAI:pm-init` | `/tmuxAI:pm:1-init` |
 | `/tmuxAI:pm-assign` | `/tmuxAI:pm:2-assign` |
 | `/tmuxAI:pm-status` | `/tmuxAI:pm:3-status` |
