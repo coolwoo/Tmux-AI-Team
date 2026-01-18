@@ -21,9 +21,9 @@ AI 项目自动化工具包 - 将 tmux 与 Claude Code 集成，实现自主开�
 | 指标 | 数值 |
 |------|------|
 | 核心脚本 | `bashrc-ai-automation-v2.sh` (2464 行) |
-| 斜杠命令 | 42 个 (9 个命令组) |
+| 斜杠命令 | 43 个 (9 个命令组) |
 | 专家 Agents | 12 个 |
-| 用户文档 | 8 个 |
+| 用户文档 | 7 个 |
 
 ## 项目结构图
 
@@ -57,14 +57,14 @@ graph TB
                 ROLES["roles/<br/>developer, qa, devops, reviewer"]
             end
             subgraph Other["其他命令组"]
-                SECURITY["security/ (10个)"]
-                DOC["documentation/ (3个)"]
-                ZCF["zcf/ (9个)"]
-                ANTHRO["anthropic/ (4个)"]
-                ARCH["architecture/ (2个)"]
-                PROMPTENG["promptengineering/ (3个)"]
+                SECURITY["security/ (9个)"]
+                DOC["documentation/ (2个)"]
+                ZCF["zcf/ (8个)"]
+                ANTHRO["anthropic/ (3个)"]
+                ARCH["architecture/ (1个)"]
+                PROMPTENG["promptengineering/ (2个)"]
                 REFACTOR["refactor/ (2个)"]
-                CLEANUP["cleanup/ (2个)"]
+                CLEANUP["cleanup/ (4个)"]
             end
         end
 
@@ -152,10 +152,10 @@ flowchart TB
 | 核心函数库 | [`bashrc-ai-automation-v2.sh`](bashrc-ai-automation-v2.sh) | 所有 Bash 函数定义 (2464 行，17 个部分) |
 | Agent 上下文 | [`.claude/TMUX_AI.md`](.claude/TMUX_AI.md) | fire 启动时复制到目标项目 |
 | tmuxAI 命令 | [`.claude/commands/tmuxAI/`](.claude/commands/tmuxAI/) | PM、团队部署、角色命令 (14 个) |
-| 其他命令组 | [`.claude/commands/`](.claude/commands/) | security, zcf, documentation 等 (28 个) |
+| 其他命令组 | [`.claude/commands/`](.claude/commands/) | security, zcf, documentation 等 (29 个) |
 | 专家 Agents | [`.claude/agents/`](.claude/agents/) | 后端架构、代码搜索等专家 (12 个) |
 | Hook 集成 | [`hooks/`](hooks/) | Claude Code Hook 配置模板 |
-| 用户文档 | [`docs/`](docs/) | 快速开始、使用手册、最佳实践 (8 个) |
+| 用户文档 | [`docs/`](docs/) | 快速开始、使用手册、最佳实践 (7 个) |
 
 ### 命令组详情
 
@@ -164,12 +164,12 @@ flowchart TB
 | `tmuxAI/` | 14 | PM 监督、槽位管理、角色定义 |
 | `security/` | 9 | 安全审计、提示词注入测试 |
 | `zcf/` | 8 | Git 工作流、项目初始化 |
+| `cleanup/` | 4 | 上下文优化（分析-预览-归档-执行流水线） |
 | `anthropic/` | 3 | Memory Bank、TodoWrite 等 |
 | `documentation/` | 2 | README、Release Note 生成 |
 | `promptengineering/` | 2 | 提示词工程 |
-| `architecture/` | 1 | 架构模式说明 |
-| `cleanup/` | 1 | 上下文优化 |
 | `refactor/` | 2 | 重构分析 |
+| `architecture/` | 1 | 架构模式说明 |
 
 ## 开发与测试
 

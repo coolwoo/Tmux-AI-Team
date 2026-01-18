@@ -1,0 +1,112 @@
+{
+  "timestamp": "2026-01-18T10:25:00+08:00",
+  "version": "1.0",
+  "summary": {
+    "total_files": 6,
+    "total_bytes": 44490,
+    "estimated_savings_bytes": 8500,
+    "estimated_savings_percent": 19
+  },
+  "critical_content_coverage": {
+    "project_structure": true,
+    "core_functions": true,
+    "dev_standards": true,
+    "architecture": true
+  },
+  "recommendations": {
+    "delete": [],
+    "consolidate": [],
+    "archive": [],
+    "streamline": [
+      {
+        "file": "CLAUDE.md",
+        "sections": [
+          "消息发送 (tsc)",
+          "Tmux 信息获取 (_get_tmux_info)",
+          "自调度 (schedule-checkin)",
+          "Stop Hook (_pm_stop_hook)"
+        ],
+        "reason": "这些章节与 .claude/TMUX_AI.md 和 hooks/CLAUDE.md 有重复内容。CLAUDE.md 是给 Claude Code 看的项目指导，而 TMUX_AI.md 是给 Agent 看的运行时上下文。建议 CLAUDE.md 中简化这些章节，仅保留引用链接",
+        "estimated_savings_bytes": 5000
+      },
+      {
+        "file": ".claude/TMUX_AI.md",
+        "sections": [
+          "7.6 Hook 集成 (_pm_stop_hook)",
+          "7.7 Prompt Hook 人类介入检测"
+        ],
+        "reason": "这些章节与 hooks/CLAUDE.md 有重复内容。可以简化为引用 hooks/CLAUDE.md",
+        "estimated_savings_bytes": 3500
+      }
+    ]
+  },
+  "duplication_analysis": {
+    "CLAUDE.md_vs_TMUX_AI.md": {
+      "overlapping_topics": [
+        "tsc 消息发送函数",
+        "_get_tmux_info 函数",
+        "schedule-checkin 自调度",
+        "Hook 机制说明",
+        "PM 槽位管理命令"
+      ],
+      "note": "两个文件的目标读者不同：CLAUDE.md 面向开发者理解项目，TMUX_AI.md 面向运行时 Agent。部分重复是合理的，但可以通过交叉引用减少"
+    },
+    "hooks/CLAUDE.md_vs_others": {
+      "overlapping_topics": [
+        "Stop Hook 工作流程",
+        "Prompt Hook 工作流程",
+        "状态标记协议"
+      ],
+      "note": "hooks/CLAUDE.md 是 Hook 专门文档，但 CLAUDE.md 和 TMUX_AI.md 中也包含了详细说明，可以精简"
+    }
+  },
+  "file_details": [
+    {
+      "file": "./CLAUDE.md",
+      "size_bytes": 14260,
+      "role": "项目主文档 - 给 Claude Code 看的项目指导",
+      "status": "active",
+      "suggestions": "精简重复的函数详解章节，保留索引和架构图"
+    },
+    {
+      "file": "./.claude/TMUX_AI.md",
+      "size_bytes": 13972,
+      "role": "Agent 运行时上下文 - fire 启动时复制到目标项目",
+      "status": "active",
+      "suggestions": "保留大部分内容（Agent 需要完整上下文），精简 Hook 章节"
+    },
+    {
+      "file": "./hooks/CLAUDE.md",
+      "size_bytes": 7830,
+      "role": "Hook 模块文档",
+      "status": "active",
+      "suggestions": "保持不变，作为 Hook 的权威文档"
+    },
+    {
+      "file": "./.claude/commands/CLAUDE.md",
+      "size_bytes": 4970,
+      "role": "斜杠命令索引",
+      "status": "active",
+      "suggestions": "保持不变"
+    },
+    {
+      "file": "./.claude/agents/CLAUDE.md",
+      "size_bytes": 2703,
+      "role": "Agent 索引",
+      "status": "active",
+      "suggestions": "保持不变"
+    },
+    {
+      "file": "./docs/CLAUDE.md",
+      "size_bytes": 2141,
+      "role": "用户文档索引",
+      "status": "active",
+      "suggestions": "保持不变"
+    }
+  ],
+  "warnings": [
+    "发现 CLAUDE.md 有未提交的修改，建议先 git commit",
+    "CLAUDE.md 与 TMUX_AI.md 存在内容重叠，但由于目标读者不同，适度重复是可接受的",
+    "streamline 建议主要针对减少维护负担，而非强制执行"
+  ]
+}
